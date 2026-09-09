@@ -31,20 +31,20 @@
 - [x] `pixi.toml`（task 别名：check / fmt / test / example-gpt2）
 - [x] `AGENTS.md` + `README.md`
 - [x] 本文档（目标文件）
-- [ ] ADR-0001（记录上述 3 个技术决策）
+- [x] ADR-0001（记录上述 3 个技术决策）
 
 ### Phase 1 — GPT-2 风格最小闭环（BPE + ByteLevel）`[~]`
 目标：从「原始文本」到「token ids」再到「解码回文本」的完整链路跑通，
 并用**内联小型 vocab/merges 测试夹具**验证，不依赖外网下载 GPT-2 权重。
 
-- [ ] `ByteLevel` PreTokenizer（字节↔unicode 映射 + GPT-2 分词）
-- [ ] `ByteLevel` Decoder（逆映射 + UTF-8 还原）
-- [ ] `BPE` Model（vocab/merges 加载 + 贪心 merge 编码）
-- [ ] `NFC` Normalizer（Phase 1 以恒等实现占位，标注 TODO）
-- [ ] `Encoding` 结构（ids / tokens / offsets / masks）
-- [ ] `Tokenizer` 主结构（normalize → pretokenize → model → encode）
-- [ ] 单元测试：`tests/test_byte_level.mojo`、`test_bpe.mojo`、`test_tokenizer.mojo`
-- [ ] 示例：`examples/gpt2_minimal.mojo`
+- [x] `ByteLevel` PreTokenizer（字节↔unicode 映射 + GPT-2 分词）
+- [x] `ByteLevel` Decoder（逆映射 + UTF-8 还原）
+- [x] `BPE` Model（vocab/merges 加载 + 贪心 merge 编码）
+- [x] `NFC` Normalizer（Phase 1 以恒等实现占位，标注 TODO）
+- [x] `Encoding` 结构（ids / tokens / offsets / masks）
+- [x] `Tokenizer` 主结构（normalize → pretokenize → model → encode）
+- [x] 单元测试：`tests/test_byte_level.mojo`、`test_bpe.mojo`、`test_encoding.mojo`、`test_tokenizer.mojo`（42 项全绿）
+- [x] 示例：`examples/gpt2_minimal.mojo`（roundtrip `' hello world'` 通过）
 - [ ] 用真实 GPT-2 `vocab.json` + `merges.txt` 做一次端到端冒烟验证
       （对比 HF `tokenizers` / `transformers` 输出，确认 ids 一致）
 

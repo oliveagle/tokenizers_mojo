@@ -63,7 +63,10 @@ git submodule update --init --recursive
 
 - `submodules/tokenizers/` 内不允许直接改动。如需"补丁"，应在主仓库里写
   patch 脚本或 upstream PR，不进 git 历史。
-- `src/`、`tests/`、`examples/` 在长出实际内容前保持空（用 `.gitkeep` 占位）。
+- `src/` 下每个模块都应有对应 `tests/test_<area>.mojo`；每个公共 API 都必须有测试覆盖。
+- 测试运行方式（Mojo 1.0.0 无 `mojo test`）：`bash scripts/run_tests.sh`，
+  每个测试文件是独立可执行程序（`mojo run -I src -I tests tests/test_*.mojo`），
+  用 `tests/harness.mojo` 里的 `expect()`/`expect_str()`/`expect_eq()` 做断言。
 
 ## 工作流程（建议）
 
@@ -83,8 +86,9 @@ git submodule update --init --recursive
 - 仓库已初始化
 - 子模块 `submodules/tokenizers` 已添加
 - `AGENTS.md`、`README.md`、`docs/README.md` 已写
-- 尚未引入任何 Mojo 工具链配置文件
-- 尚未开始 Mojo 代码
+- `pixi.toml` 已引入（task：check / fmt / test / example-gpt2）
+- Phase 1 代码已开始：`src/` 下有 byte_level / bpe / encoding / normalizers / tokenizer
+- 测试：`tests/` 下 4 个测试文件全绿；示例 `examples/gpt2_minimal.mojo` 闭环通过
 
 ## 已确定的关键决策
 

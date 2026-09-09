@@ -13,11 +13,13 @@ platforms = ["linux-64", "osx-arm64", "osx-64"]
 # outside of pixi.
 
 [tasks]
-# Type-check the entire library
-check = "mojo check src tests examples"
+# Type-check the entire library (Mojo 1.0.0 has no `mojo check`; we
+# compile a module that imports every public module under src/).
+check = "mojo build -I src src/typecheck.mojo -o /tmp/tokenizers_mojo_typecheck"
 # Format the source tree
 fmt   = "mojo format src tests examples"
-# Run the test suite
-test  = "mojo test -I src tests"
+# Run the test suite (standalone test programs; no `mojo test` runner in
+# this Mojo build)
+test  = "bash scripts/run_tests.sh"
 # Run the GPT-2 minimal end-to-end example
 example-gpt2 = "mojo run -I src examples/gpt2_minimal.mojo"
