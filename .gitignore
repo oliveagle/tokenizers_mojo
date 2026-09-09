@@ -1,0 +1,23 @@
+# Mojo
+.mojocache/
+build/
+*.o
+*.obj
+
+# Pixi
+.pixi/
+
+# Python (用于 Python 互操作或工具链时)
+.venv/
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo

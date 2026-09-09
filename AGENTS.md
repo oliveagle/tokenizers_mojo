@@ -1,0 +1,108 @@
+# AGENTS.md
+
+> 这份文档同时面向 AI agent 与人类协作者。它定义了项目目标、目录约定和
+> 工作流程。任何对本仓库的改动都应该先读这一页。
+
+## 项目目标
+
+用 [Mojo](https://www.modular.com/mojo) 重写
+[HuggingFace Tokenizers](https://github.com/huggingface/tokenizers)，提供一份
+高性能、可独立使用的分词器实现。
+
+不做的事情：
+
+- 不重新发明轮子：算法、tokenizer 类型、训练流程都尽量对齐上游
+  `huggingface/tokenizers` 的语义与行为。
+- 不在主仓库内修改上游实现：上游放在 `submodules/tokenizers/`，只读。
+
+## 参考实现
+
+上游 Rust 仓库已挂为子模块：
+
+```bash
+git submodule update --init --recursive
+```
+
+阅读时主要关注的目录：
+
+| 上游路径 | 对应职责 |
+|---|---|
+| `tokenizers/src/tokenizer/` | `Tokenizer` 主结构、`Encoding`、`AddedToken` |
+| `tokenizers/src/models/bpe/` | BPE 模型 |
+| `tokenizers/src/models/wordpiece/` | WordPiece 模型 |
+| `tokenizers/src/models/wordlevel/` | WordLevel 模型 |
+| `tokenizers/src/models/unigram/` | Unigram (SentencePiece) 模型 |
+| `tokenizers/src/normalizers/` | 文本规范化（NFC、NFK、Lowercase、Strip 等） |
+| `tokenizers/src/pre_tokenizers/` | 预分词（ByteLevel、BertPreTokenizer、Metaspace 等） |
+| `tokenizers/src/processors/` | 后处理（RobertaProcessing、TemplateProcessing 等） |
+| `tokenizers/src/decoders/` | 解码器 |
+| `tokenizers/src/trainers/` | 各 Model 对应的训练器 |
+
+跨语言兼容性 / 测试向量（重要参考）：
+
+- `tokenizers/tests/` —— Rust 端到端测试，可作为行为基准
+- `bindings/python/pyo3/src/` —— Python API 形态，可作为对外 API 的参考
+
+## 目录约定
+
+```
+.
+├── AGENTS.md                 本文件
+├── README.md                 项目对外介绍
+├── .gitignore
+├── .gitmodules               子模块声明
+├── docs/                     设计、决策、进度
+├── src/                      Mojo 源码
+├── tests/                    单元/集成测试
+├── examples/                 使用示例
+└── submodules/
+    └── tokenizers/           上游 Rust 实现（只读）
+```
+
+约束：
+
+- `submodules/tokenizers/` 内不允许直接改动。如需"补丁"，应在主仓库里写
+  patch 脚本或 upstream PR，不进 git 历史。
+- `src/`、`tests/`、`examples/` 在长出实际内容前保持空（用 `.gitkeep` 占位）。
+
+## 工作流程（建议）
+
+1. **先读后写**：改任何模块前，先把 `submodules/tokenizers/` 对应 Rust 源码
+   完整读一遍，并确认对应行为测试在 Rust 端如何定义。
+2. **小步前进**：每个原子改动单独 commit；commit message 形式
+   `<scope>: <imperative>`（例：`bpe: add byte-level pretokenizer`）。
+3. **行为一致优先于性能**：先与 Rust 版本做行为对齐（同一输入产出同样的
+   token id 序列），再考虑 SIMD/并行优化。
+4. **测试**：每个公共 API 都必须有最小可运行测试；Mojo 端测试运行命令待
+   工具链确定后写入 `docs/`。
+5. **设计决策**：跨模块的取舍（例如"是否需要完全镜像 HF Python API"）必须
+   在 `docs/adr-XXXX-<title>.md` 里记录一次 ADR。
+
+## 当前状态
+
+- 仓库已初始化
+- 子模块 `submodules/tokenizers` 已添加
+- `AGENTS.md`、`README.md`、`docs/README.md` 已写
+- 尚未引入任何 Mojo 工具链配置文件
+- 尚未开始 Mojo 代码
+
+## 待定（动手前要敲定）
+
+- [ ] 包/构建管理：`pixi` / `magic` / `mojoproject.toml` 选哪个？
+- [ ] 工具链版本：Mojo 25.x？还是 nightly？
+- [ ] 第一阶段覆盖范围：建议从 BPE Model + NFC Normalizer + ByteLevel
+      PreTokenizer 起手，覆盖一个 GPT-2 风格的最小可用闭环，再向外扩。
+- [ ] 对外 API 形态：是"类 HF Python `Tokenizer`"风格，还是更 Mojo-native
+      （struct + fn）？两种风格差异不小，影响整个 src 布局。
+- [ ] Python 互操作：是否需要 `Python` interop？是否要直接生成 `.so` 给
+      `transformers` 加载？
+- [ ] 性能目标：相对 Rust 实现的目标加速比 / 内存占用上限。
+- [ ] 训练器：先支持预训练 vocab 加载（`from_file`），把训练器留到后期。
+
+## 给 AI agent 的补充说明
+
+- 不要创建未经请求的依赖文件（`pixi.toml`、`mojoproject.toml` 等）—— 等
+  上面"待定"清单里至少前 3 项确认后再动。
+- 不要直接把上游 Rust 文件复制成 Mojo 文件再翻译；那是反模式。应该先读懂
+  数据结构与算法，再按 Mojo 的 idiom 重写。
+- 任何对 `submodules/` 的 `git add` / 修改都应该被忽略。
