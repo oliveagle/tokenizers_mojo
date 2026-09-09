@@ -84,7 +84,11 @@
 - [x] BPE Trainer（从语料训练 vocab/merges）— 12 项白盒测试对照 HF tokenizers 对齐
 - [x] `Tokenizer.from_pretrained(...)` 直接读取 HF `tokenizer.json` — 5 项白盒测试对照 HF 对齐（含自研 JSON parser）
 - [x] 批量 encode（`encode_batch` / `decode_batch`，2 项测试；Mojo 1.0 无 threading 原语，上游 rayon 并行留待 stdlib 支持）
-- [ ] 性能基准：与 Rust 版对比（`pixi run bench`）
+- [x] 性能基准：与 Rust 版对比（`pixi run bench` / `python3 scripts/bench_rust.py`）
+  - 实测（fixture 5 句 × 2000 rounds = 10000 encodes）：
+    - Rust (HF): ~8 us/encode (~122K enc/sec)
+    - Mojo: ~39 us/encode (~25K enc/sec)
+  - 比值 ~5x，Mojo 起步正确性优先，性能优化待后续。
 
 ### Phase 4 — 生态 `[ ]`
 - [ ] Python 互操作封装（`Python` interop / `.so`），供 `transformers` 加载
@@ -117,6 +121,8 @@
 - 2026-09-10：真实 Unicode Normalizer 完成（NFD/NFKD/NFC/NFKC，表从
   Python `unicodedata` 生成于 `src/unicode_data.mojo`，算法层
   `src/unicode.mojo`，Hangul 走标准算法路径）。
+- 2026-09-10：性能基准完成（`examples/bench.mojo` + `scripts/bench_rust.py`，
+  `pixi run bench`）。Mojo 起步正确性优先，性能优化留待后续。
 - 2026-09-10：批量 encode/decode 完成（`Tokenizer.encode_batch` /
   `decode_batch`，`tests/test_batch.mojo` 2 项测试）。与单条 `encode`
   逐位一致。Mojo 1.0.0 stdlib 无 threading 原语，无法直接并行；

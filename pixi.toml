@@ -23,3 +23,7 @@ fmt   = "mojo format src tests examples"
 test  = "bash scripts/run_tests.sh"
 # Run the GPT-2 minimal end-to-end example
 example-gpt2 = "mojo run -I src examples/gpt2_minimal.mojo"
+# Phase 3 performance benchmark (Mojo) vs Rust baseline:
+#   pixi run bench            # Mojo encodes/sec
+#   python3 scripts/bench_rust.py   # Rust/HF baseline
+bench = "mojo run -I src -I tests examples/bench.mojo"
