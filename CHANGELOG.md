@@ -21,7 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **性能基准** (`examples/bench.mojo` + `scripts/bench_rust.py`):
   fixture 10000 encodes — Rust ~8us/enc vs Mojo ~39us/enc (~5x)。
 
-### Phase 4 — 生态（进行中）
+### Phase 4 — 生态（完成）
 
-- ADR-0002：Mojo 1.0.0 `@export` 不支持参数化 Pointer / String
-  ctypes 桥接，Python 互操作 .so 直连暂受阻，标记 `[~]` 留待工具链升级。
+- **Python 互操作**（file-bridge 策略）：
+  - `src/python_api.mojo` → 独立可执行桥接器，JSON 文件双向通信
+  - `scripts/tokenizers_mojo_py.py` → `TokenizerMojo` HF-shaped 封装
+  - `tests/test_python_interop.py` → 6 句语料 encode+decode 与 HF 一致
+  - ADR-0002 更新为"已接受（file-bridge）"；`.so` 直连受阻于
+    Mojo 1.0.0 `@export` 限制，留待工具链升级
+- 发布管线：版本 0.3.0 + CHANGELOG + README 状态 + pixi tasks
+  （`build-bridge` / `test-python`）

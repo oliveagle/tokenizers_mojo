@@ -35,5 +35,12 @@ Phase 4 目标之一是"Python 互操作封装（`Python` interop / `.so`），�
   强做是坏 API）。
 - 记录上述限制为已知约束；当 Mojo 工具链放开 `@export` 对
   String/Pointer 的支持后，再补 `.so` 直连封装。
-- Phase 4 的"发布管线"先行（版本、CHANGELOG、CI 文档），
-  Python 互操作标记为 `[~] 受阻于 Mojo 1.0.0 FFI` 留待工具链升级。
+- **采用文件桥接方案**（2026-09-10 追加）：`src/python_api.mojo` 编译
+  为独立可执行，stdin/stdout/argv 缺失改用固定路径 JSON 文件
+  （`/tmp/tokenizers_mojo_{req,resp}.json`）双向通信。Python 侧
+  `scripts/tokenizers_mojo_py.py` 封装 `TokenizerMojo` 类
+  （`encode/decode/get_vocab_size/get_merges_count`），API 形状对齐
+  HF `tokenizers`。`tests/test_python_interop.py` 验证 6 句语料
+  encode+decode 与 HF 完全一致。
+- Phase 4 Python 互操作**已完成**（file-bridge 策略）；
+  `.so` 直连仍标记为 Mojo 工具链升级后的改进方向。

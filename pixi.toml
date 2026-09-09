@@ -27,3 +27,7 @@ example-gpt2 = "mojo run -I src examples/gpt2_minimal.mojo"
 #   pixi run bench            # Mojo encodes/sec
 #   python3 scripts/bench_rust.py   # Rust/HF baseline
 bench = "mojo run -I src -I tests examples/bench.mojo"
+# Build the Python-interop bridge executable (Mojo -> standalone driver)
+build-bridge = "mojo build -I src src/python_api.mojo -o /tmp/tokenizers_mojo_bridge"
+# Run the Python interop test (requires build-bridge first)
+test-python = "python3 tests/test_python_interop.py"

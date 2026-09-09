@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  mojo-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install Mojo
+        run: |
+          curl -fsSL https://developer.modular.com/install.sh -o install.sh
+          chmod +x install.sh
+          ./install.sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Check
+        run: mojo build -I src src/typecheck.mojo -o /tmp/typecheck
+      - name: Format check
+        run: |
+          if ! mojo format --check src tests examples; then
+            echo "format diff detected; run 'mojo format src tests examples'"
+            exit 1
+          fi
+      - name: Test
+        run: bash scripts/run_tests.sh
+      - name: Build Python bridge
+        run: mojo build -I src src/python_api.mojo -o /tmp/tokenizers_mojo_bridge
+      - name: Python interop test
+        run: |
+          pip install tokenizers
+          python3 tests/test_python_interop.py
+      - name: Bench (informational)
+        run: |
+          mojo run -I src -I tests examples/bench.mojo || true

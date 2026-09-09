@@ -90,10 +90,11 @@
     - Mojo: ~39 us/encode (~25K enc/sec)
   - 比值 ~5x，Mojo 起步正确性优先，性能优化待后续。
 
-### Phase 4 — 生态 `[~]`
-- [~] Python 互操作封装（`Python` interop / `.so`），供 `transformers` 加载
-      — 受阻于 Mojo 1.0.0 FFI（`@export` 不支持 String/Pointer 参数化签名，
-      ctypes 直连崩溃），见 ADR-0002；工具链升级后补
+### Phase 4 — 生态 `[x]`
+- [x] Python 互操作封装（file-bridge 策略，`src/python_api.mojo` +
+      `scripts/tokenizers_mojo_py.py` + `tests/test_python_interop.py`）。
+      ADR-0002 记录 `.so` 直连受阻于 Mojo 1.0.0 `@export` 限制；
+      文件桥接验证 6 句语料 encode+decode 与 HF 一致
 - [x] 发布管线起步（版本 0.3.0 + `CHANGELOG.md` + README 状态；CI 待补）
 
 ## 4. 非目标（明确不做）
@@ -123,6 +124,8 @@
 - 2026-09-10：真实 Unicode Normalizer 完成（NFD/NFKD/NFC/NFKC，表从
   Python `unicodedata` 生成于 `src/unicode_data.mojo`，算法层
   `src/unicode.mojo`，Hangul 走标准算法路径）。
+- 2026-09-10：Phase 4 Python 互操作完成（file-bridge）。ADR-0002
+  更新为"已接受（file-bridge 策略）"；Python 侧 6/6 编解码与 HF 一致。
 - 2026-09-10：Phase 4 起步 — 发布管线（版本 0.3.0 + CHANGELOG +
   README 状态更新）；Python 互操作经 ADR-0002 记录 Mojo 1.0.0 `@export`
   对 String/Pointer 的限制，.so 直连标记 `[~]` 留待工具链升级。
