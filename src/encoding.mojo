@@ -117,3 +117,113 @@ struct Encoding:
                 s += " "
             s += "(" + String(self.ids[i]) + ", " + self.tokens[i] + ")"
         return s
+
+    def _slice(self, start: Int, stop: Int) -> Encoding:
+        """Copy the parallel-array window [start, stop) into a new Encoding."""
+        var out = Encoding()
+        for i in range(start, stop):
+            out.ids.append(self.ids[i])
+            out.type_ids.append(self.type_ids[i])
+            out.tokens.append(self.tokens[i])
+            out.offsets.append(self.offsets[i])
+            out.attention_mask.append(self.attention_mask[i])
+            out.special_tokens_mask.append(self.special_tokens_mask[i])
+            out.sequence_ids.append(self.sequence_ids[i])
+        return out^
+
+    def truncate(
+        mut self, max_len: Int, stride: Int, direction: String
+    ) raises -> List[Encoding]:
+        """Truncate this Encoding to at most `max_len` tokens.
+
+        Mirrors upstream `Encoding::truncate`:
+          * max_len >= len -> no-op, returns no overflows
+          * max_len == 0   -> the whole encoding becomes a single overflow
+            and `self` is emptied
+          * else           -> `self` becomes the first window of size
+            max_len (windows step by `max_len - stride`), and every later
+            window is returned as an overflow Encoding.
+        Requires `stride < max_len`.
+
+        Returns a fresh List[Encoding] of overflow windows (empty when no
+        truncation happened).  Unlike upstream Rust we cannot store
+        `List[Encoding]` inside `Encoding` (Mojo rejects recursive
+        fields), so the overflows are returned to the caller.
+        """
+        var encoding_len = self.len()
+        var overflows = List[Encoding]()
+        if max_len >= encoding_len:
+            return overflows^
+        if max_len == 0:
+            overflows.append(self._slice(0, encoding_len))
+            self.ids = List[Int]()
+            self.type_ids = List[Int]()
+            self.tokens = List[String]()
+            self.offsets = List[Tuple[Int, Int]]()
+            self.attention_mask = List[Int]()
+            self.special_tokens_mask = List[Int]()
+            self.sequence_ids = List[Int]()
+            return overflows^
+        if stride >= max_len:
+            raise Error(
+                "`stride` must be strictly less than `max_len="
+                + String(max_len)
+                + "`"
+            )
+
+        var offset = max_len - stride
+        # build the [start, stop) windows, mirroring upstream parts_ranges
+        var parts = List[Tuple[Int, Int]]()
+        if direction == "left":
+            var stop_pos = encoding_len - 1
+            var ended = False
+            while stop_pos >= 0 and not ended:
+                var stop = stop_pos + 1
+                var start = stop - max_len
+                if start < 0:
+                    start = 0
+                if start < stop:
+                    ended = start == 0
+                    parts.append(Tuple[Int, Int](start, stop))
+                stop_pos -= offset
+        else:
+            # right (default)
+            var start = 0
+            var ended = False
+            while not ended:
+                var stop = start + max_len
+                if stop > encoding_len:
+                    stop = encoding_len
+                ended = stop == encoding_len
+                parts.append(Tuple[Int, Int](start, stop))
+                start += offset
+
+        # overflows = parts[1:]
+        for i in range(1, len(parts)):
+            overflows.append(self._slice(parts[i][0], parts[i][1]))
+
+        # self = parts[0]
+        var first = parts[0]
+        var new_ids = List[Int]()
+        var new_type_ids = List[Int]()
+        var new_tokens = List[String]()
+        var new_offsets = List[Tuple[Int, Int]]()
+        var new_attention_mask = List[Int]()
+        var new_special_tokens_mask = List[Int]()
+        var new_sequence_ids = List[Int]()
+        for i in range(first[0], first[1]):
+            new_ids.append(self.ids[i])
+            new_type_ids.append(self.type_ids[i])
+            new_tokens.append(self.tokens[i])
+            new_offsets.append(self.offsets[i])
+            new_attention_mask.append(self.attention_mask[i])
+            new_special_tokens_mask.append(self.special_tokens_mask[i])
+            new_sequence_ids.append(self.sequence_ids[i])
+        self.ids = new_ids^
+        self.type_ids = new_type_ids^
+        self.tokens = new_tokens^
+        self.offsets = new_offsets^
+        self.attention_mask = new_attention_mask^
+        self.special_tokens_mask = new_special_tokens_mask^
+        self.sequence_ids = new_sequence_ids^
+        return overflows^

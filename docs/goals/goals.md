@@ -71,7 +71,8 @@
       并已接入 Tokenizer：`add_special_token` + 最长匹配前置切分，
       `special_tokens_mask` 正确标记，ids 与 HF 一致）
 - [x] 完整 `Encoding` 字段（新增 sequence_ids、push_special、type_ids 批量）；
-      overflowing 待做
+      `truncate`/overflowing（`TruncationParams` 3 种策略 × left/right
+      × stride 滑窗，`truncate_encodings` 单+对，14 项对齐测试）
 - [x] 引入 trait/接口抽象（`src/traits.mojo`：`Normalizer` / `PreTokenizer` /
       `Model` / `Decoder`），所有现有 struct 显式 conform，并用泛型
       `pipeline[N: Normalizer, P: PreTokenizer, M: Model]` 验证运行时多实现
@@ -107,4 +108,7 @@
 - 2026-09-10：TemplateProcessing 完成（解决 Mojo 1.0.0
   `Copyable`/ImplicitlyCopyable 约束，统一以 `[X]:N` / `$X:N` 后缀语法
   处理 sequence 与 special token 的显式 type_id）。
+- 2026-09-10：Truncation/overflowing 完成（`Encoding.truncate` 滑窗 +
+  `truncate_encodings` 单/对 × LongestFirst/OnlyFirst/OnlySecond，
+  overflow 以 `TruncatedEncodings` 独立返回——Mojo 递归字段受限）。
 - 跨模块决策记入 `docs/adr-*.md`；组件设计记入 `docs/design-*.md`。
