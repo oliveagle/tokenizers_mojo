@@ -80,7 +80,7 @@
       `Model` / `Decoder`），所有现有 struct 显式 conform，并用泛型
       `pipeline[N: Normalizer, P: PreTokenizer, M: Model]` 验证运行时多实现
 
-### Phase 3 — 训练与规模化 `[~]`
+### Phase 3 — 训练与规模化 `[x]`
 - [x] BPE Trainer（从语料训练 vocab/merges）— 12 项白盒测试对照 HF tokenizers 对齐
 - [x] `Tokenizer.from_pretrained(...)` 直接读取 HF `tokenizer.json` — 5 项白盒测试对照 HF 对齐（含自研 JSON parser）
 - [x] 批量 encode（`encode_batch` / `decode_batch`，2 项测试；Mojo 1.0 无 threading 原语，上游 rayon 并行留待 stdlib 支持）
