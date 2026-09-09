@@ -82,7 +82,7 @@
 
 ### Phase 3 — 训练与规模化 `[~]`
 - [x] BPE Trainer（从语料训练 vocab/merges）— 12 项白盒测试对照 HF tokenizers 对齐
-- [ ] `Tokenizer.from_pretrained(...)` 直接读取 HF `tokenizer.json`
+- [x] `Tokenizer.from_pretrained(...)` 直接读取 HF `tokenizer.json` — 5 项白盒测试对照 HF 对齐（含自研 JSON parser）
 - [ ] 并行 / 批量 encode（多线程，参照上游 rayon 思路）
 - [ ] 性能基准：与 Rust 版对比（`pixi run bench`）
 
@@ -117,6 +117,13 @@
 - 2026-09-10：真实 Unicode Normalizer 完成（NFD/NFKD/NFC/NFKC，表从
   Python `unicodedata` 生成于 `src/unicode_data.mojo`，算法层
   `src/unicode.mojo`，Hangul 走标准算法路径）。
+- 2026-09-10：`from_pretrained` 完成（`src/from_pretrained.mojo` +
+  自研 JSON 解析器 `src/json.mojo`，5 项测试
+  `tests/test_from_pretrained.mojo`）。读取 HF `tokenizer.json`（BPE +
+  ByteLevel pre_tokenizer/decoder），加载 vocab/merges/added_tokens/
+  add_prefix_space/use_regex，编码 ids 与 HF `Tokenizer.from_file`
+  完全一致（6 句测试语料）。限制：仅支持 BPE/ByteLevel；不支持
+  WordPiece/Unigram 等；路径需要绝对路径。
 - 2026-09-10：BPE Trainer 完成（`src/bpe_trainer.mojo` + 12 项测试
   `tests/test_bpe_trainer.mojo`）。对齐 HF tokenizers：
   - minimal 配置下 vocab + merges 完全一致

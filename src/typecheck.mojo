@@ -8,6 +8,8 @@ is done by building this module, which imports every public module under
 import bert_pre_tokenizer
 import byte_level
 import bpe
+import json
+import from_pretrained
 import bpe_trainer
 import encoding
 import normalizers
