@@ -44,7 +44,9 @@ def test_sentence_ids_match_reference() raises:
         var enc = tok.encode(texts[i])
         var ours = enc.get_ids()
         var expected = ref_ids(i)
-        expect_eq(len(ours), len(expected), "id count for sentence " + String(i))
+        expect_eq(
+            len(ours), len(expected), "id count for sentence " + String(i)
+        )
         for j in range(len(expected)):
             expect_eq(
                 ours[j],

@@ -87,8 +87,9 @@ git submodule update --init --recursive
 - 子模块 `submodules/tokenizers` 已添加
 - `AGENTS.md`、`README.md`、`docs/README.md` 已写
 - `pixi.toml` 已引入（task：check / fmt / test / example-gpt2）
-- Phase 1 代码已开始：`src/` 下有 byte_level / bpe / encoding / normalizers / tokenizer / typecheck
-- 测试：`tests/` 下 5 个测试文件（44 项）全绿，含**真实 GPT-2 闭包子集冒烟**
+- Phase 1 完成：`src/` 下有 byte_level / bpe / encoding / normalizers / tokenizer / typecheck
+- Phase 2 进行中：新增 whitespace / added_token / post_processor 模块
+- 测试：`tests/` 下 7 个测试文件（67 项）全绿，含**真实 GPT-2 闭包子集冒烟**
 - 示例 `examples/gpt2_minimal.mojo` 闭环通过（roundtrip `' hello world'`）
 
 ## 已确定的关键决策

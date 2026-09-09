@@ -56,12 +56,17 @@
 3. [x] `decode(encode(text))` 在 add_prefix_space 语义下与上游一致（含前置空格行为）。
 4. [x] 所有公共类型为 `struct` + 方法，无 Python 类型渗入对外 API。
 
-### Phase 2 — 对齐 & 扩展 `[ ]`
-- [ ] 补全 `Normalizer`：真实 NFC/NFKC/NFD/NFKD、Lowercase、Strip 等
-- [ ] 补全 `PreTokenizer`：Whitespace、Metaspace、BertPreTokenizer、Split 等
-- [ ] `PostProcessor`：RobertaProcessing、TemplateProcessing
-- [ ] `AddedToken` 机制（special tokens、自定义 added tokens）
-- [ ] 完整 `Encoding` 字段（sequence_ids、special_tokens_mask、overflowing 等）
+### Phase 2 — 对齐 & 扩展 `[~]`
+- [x] 补全 `Normalizer`：Lowercase（ASCII/Latin-1/Greek/Cyrillic）、Strip、
+      LowercaseStrip 组合；真实 NFC/NFKC/NFD/NFKD 仍为 TODO
+- [x] 补全 `PreTokenizer`：`Whitespace`（`\w+|[^\w\s]+` 语义）、`Metaspace`
+      （▁ 替换 + MergedWithNext 切分）；BertPreTokenizer / Split 待做
+- [x] `PostProcessor`：RobertaProcessing（`<s>`...`</s>`）、BertProcessing
+      （`[CLS]`...`[SEP]`）；TemplateProcessing 待做
+- [x] `AddedToken` 机制（content/special/single_word/lstrip/rstrip 结构；
+      接入 Tokenizer 的 special-token 前置切分待做）
+- [x] 完整 `Encoding` 字段（新增 sequence_ids、push_special、type_ids 批量）；
+      overflowing 待做
 - [ ] 引入 trait/接口抽象（Model/Normalizer/PreTokenizer/Decoder），支持多实现
 
 ### Phase 3 — 训练与规模化 `[ ]`

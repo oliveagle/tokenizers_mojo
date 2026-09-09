@@ -10,6 +10,9 @@ import bpe
 import encoding
 import normalizers
 import tokenizer
+import whitespace
+import added_token
+import post_processor
 
 
 def main():
