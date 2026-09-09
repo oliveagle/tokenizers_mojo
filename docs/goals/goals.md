@@ -90,9 +90,11 @@
     - Mojo: ~39 us/encode (~25K enc/sec)
   - 比值 ~5x，Mojo 起步正确性优先，性能优化待后续。
 
-### Phase 4 — 生态 `[ ]`
-- [ ] Python 互操作封装（`Python` interop / `.so`），供 `transformers` 加载
-- [ ] 发布管线（版本、CI、文档）
+### Phase 4 — 生态 `[~]`
+- [~] Python 互操作封装（`Python` interop / `.so`），供 `transformers` 加载
+      — 受阻于 Mojo 1.0.0 FFI（`@export` 不支持 String/Pointer 参数化签名，
+      ctypes 直连崩溃），见 ADR-0002；工具链升级后补
+- [x] 发布管线起步（版本 0.3.0 + `CHANGELOG.md` + README 状态；CI 待补）
 
 ## 4. 非目标（明确不做）
 
@@ -121,6 +123,9 @@
 - 2026-09-10：真实 Unicode Normalizer 完成（NFD/NFKD/NFC/NFKC，表从
   Python `unicodedata` 生成于 `src/unicode_data.mojo`，算法层
   `src/unicode.mojo`，Hangul 走标准算法路径）。
+- 2026-09-10：Phase 4 起步 — 发布管线（版本 0.3.0 + CHANGELOG +
+  README 状态更新）；Python 互操作经 ADR-0002 记录 Mojo 1.0.0 `@export`
+  对 String/Pointer 的限制，.so 直连标记 `[~]` 留待工具链升级。
 - 2026-09-10：性能基准完成（`examples/bench.mojo` + `scripts/bench_rust.py`，
   `pixi run bench`）。Mojo 起步正确性优先，性能优化留待后续。
 - 2026-09-10：批量 encode/decode 完成（`Tokenizer.encode_batch` /

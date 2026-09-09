@@ -3,9 +3,10 @@
 用 [Mojo](https://www.modular.com/mojo) 重写
 [HuggingFace Tokenizers](https://github.com/huggingface/tokenizers)。
 
-> 状态：Phase 1（GPT-2 风格最小闭环）进行中。`src/` 下已有
-> ByteLevel PreTokenizer/Decoder、BPE Model、NFC 占位、Encoding、
-> Tokenizer 编排；测试与示例可运行。
+> 状态：Phase 1–3 全部完成（`docs/goals/goals.md`）。
+> GPT-2 最小闭环、Normalizer/PreTokenizer/PostProcessor/AddedToken 对齐、
+> BPE Trainer、`from_pretrained`（自研 JSON parser）、批量 encode、
+> 性能基准均已落地，18+ 项测试全绿。
 
 ## 快速链接
 
@@ -24,8 +25,10 @@ git submodule update --init --recursive
 ```bash
 pixi run check      # 编译验证整个 src/ 树
 pixi run fmt        # mojo format src tests examples
-pixi run test       # 运行 tests/ 下全部测试（44 项，含真实 GPT-2 冒烟）
+pixi run test       # 运行 tests/ 下全部测试（18 文件全绿）
 pixi run example-gpt2  # 运行 examples/gpt2_minimal.mojo
+pixi run bench        # Phase 3 性能基准（Mojo）
+python3 scripts/bench_rust.py  # 对照 Rust/HF 基线
 ```
 
 ## 真实 GPT-2 冒烟测试
