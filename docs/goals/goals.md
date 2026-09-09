@@ -61,7 +61,8 @@
       LowercaseStrip 组合；真实 NFC/NFKC/NFD/NFKD 仍为 TODO
 - [x] 补全 `PreTokenizer`：`Whitespace`（`\w+|[^\w\s]+` 语义）、`Metaspace`
       （▁ 替换 + MergedWithNext 切分）、`Split`（字面量分隔符 × 4 种
-      behavior，均与 HF 一致）；BertPreTokenizer / 正则 Split 待做
+      behavior，均与 HF 一致）、`BertPreTokenizer`（空白 removed + 标点
+      isolated，含 Unicode P 类别）；正则 Split 待做
 - [x] `PostProcessor`：RobertaProcessing（`<s>`...`</s>`）、BertProcessing
       （`[CLS]`...`[SEP]`）；TemplateProcessing 待做
 - [x] `AddedToken` 机制（content/special/single_word/lstrip/rstrip 结构，
