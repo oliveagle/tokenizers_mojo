@@ -64,7 +64,9 @@
       behavior，均与 HF 一致）、`BertPreTokenizer`（空白 removed + 标点
       isolated，含 Unicode P 类别）；正则 Split 待做
 - [x] `PostProcessor`：RobertaProcessing（`<s>`...`</s>`）、BertProcessing
-      （`[CLS]`...`[SEP]`）；TemplateProcessing 待做
+      （`[CLS]`...`[SEP]`）、TemplateProcessing（`$A/$B/$0/$1` +
+      显式 `:type_id` 后缀 + `[SPECIAL]:N` 全支持，9 项 HF 参考
+      测试覆盖 single/pair/无特符/`$0`/`$1`/显式 type/未知 token）
 - [x] `AddedToken` 机制（content/special/single_word/lstrip/rstrip 结构，
       并已接入 Tokenizer：`add_special_token` + 最长匹配前置切分，
       `special_tokens_mask` 正确标记，ids 与 HF 一致）
@@ -102,4 +104,7 @@
 ## 6. 进展跟踪
 
 - 每完成一个阶段，更新本文档勾选状态，并在 commit message 中引用 `docs/goals/goals.md`。
+- 2026-09-10：TemplateProcessing 完成（解决 Mojo 1.0.0
+  `Copyable`/ImplicitlyCopyable 约束，统一以 `[X]:N` / `$X:N` 后缀语法
+  处理 sequence 与 special token 的显式 type_id）。
 - 跨模块决策记入 `docs/adr-*.md`；组件设计记入 `docs/design-*.md`。
