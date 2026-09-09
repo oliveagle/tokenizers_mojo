@@ -1,0 +1,23 @@
+[workspace]
+name = "tokenizers-mojo"
+version = "0.0.1"
+description = "Mojo port of HuggingFace Tokenizers"
+authors = ["oliveagle"]
+license = "Apache-2.0"
+readme = "README.md"
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64", "osx-64"]
+
+# Mojo 1.0.0+ is expected on PATH (system-installed). Pixi only manages
+# the project metadata and task aliases; the Mojo toolchain itself lives
+# outside of pixi.
+
+[tasks]
+# Type-check the entire library
+check = "mojo check src tests examples"
+# Format the source tree
+fmt   = "mojo format src tests examples"
+# Run the test suite
+test  = "mojo test -I src tests"
+# Run the GPT-2 minimal end-to-end example
+example-gpt2 = "mojo run -I src examples/gpt2_minimal.mojo"
