@@ -80,6 +80,48 @@ def test_uppercase_roundtrip() raises:
     expect_str(back, " Hello World", "uppercase text roundtrips")
 
 
+def test_special_token_spliced() raises:
+    var tok = Tokenizer(build_gpt2_minimal())
+    var sid = tok.add_special_token("<|endoftext|>")
+    expect_eq(
+        sid,
+        tok.model.token_id("<|endoftext|>"),
+        "special token gets a vocab id",
+    )
+    var enc = tok.encode("hello <|endoftext|> world")
+    expect_eq(
+        enc.len(), 4, "two words + trailing space + one special (matches HF)"
+    )
+    expect_str(enc.token_at(0), "Ġhello", "first word")
+    expect_str(enc.token_at(1), "Ġ", "trailing space of first word")
+    expect_str(enc.token_at(2), "<|endoftext|>", "special token")
+    expect_eq(enc.special_tokens_mask[2], 1, "special flagged")
+    expect_eq(enc.special_tokens_mask[0], 0, "normal not special")
+    expect_eq(enc.special_tokens_mask[1], 0, "space not special")
+    expect_eq(enc.id_at(2), sid, "special id matches")
+
+
+def test_special_token_at_edges() raises:
+    var tok = Tokenizer(build_gpt2_minimal())
+    _ = tok.add_special_token("<s>")
+    var enc = tok.encode("<s> hello world <s>")
+    expect_eq(enc.len(), 5, "special + two words + special")
+    expect_eq(enc.special_tokens_mask[0], 1, "leading special")
+    expect_eq(enc.special_tokens_mask[4], 1, "trailing special")
+    expect_str(enc.token_at(0), "<s>", "leading special token string")
+    expect_str(enc.token_at(4), "<s>", "trailing special token string")
+    expect_str(enc.token_at(1), "Ġhello", "first word")
+    expect_str(enc.token_at(2), "Ġworld", "second word")
+
+
+def test_special_token_surrounded_no_space() raises:
+    var tok = Tokenizer(build_gpt2_minimal())
+    tok.add_special_token("<|endoftext|>")
+    var enc = tok.encode("hello<|endoftext|>world")
+    expect_eq(enc.len(), 3, "two words + special, no spaces")
+    expect_str(enc.token_at(1), "<|endoftext|>", "special in middle")
+
+
 def main() raises:
     var failures = List[String]()
     var cases = List[String]()
@@ -90,6 +132,9 @@ def main() raises:
     cases.append("test_offsets_are_monotonic")
     cases.append("test_empty_input")
     cases.append("test_uppercase_roundtrip")
+    cases.append("test_special_token_spliced")
+    cases.append("test_special_token_at_edges")
+    cases.append("test_special_token_surrounded_no_space")
     for name in cases:
         try:
             if name == "test_encode_hello_world":
@@ -106,6 +151,12 @@ def main() raises:
                 test_empty_input()
             elif name == "test_uppercase_roundtrip":
                 test_uppercase_roundtrip()
+            elif name == "test_special_token_spliced":
+                test_special_token_spliced()
+            elif name == "test_special_token_at_edges":
+                test_special_token_at_edges()
+            elif name == "test_special_token_surrounded_no_space":
+                test_special_token_surrounded_no_space()
             print("  PASS " + name)
         except e:
             print("  FAIL " + name + " :: " + String(e))

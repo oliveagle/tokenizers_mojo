@@ -43,6 +43,11 @@ struct BPE:
             return id.value()
         return -1
 
+    def add_raw_vocab(mut self, token: String, id: Int):
+        """Add a raw token/id entry to the vocab (used for special tokens)."""
+        self.vocab[token] = id
+        self.id_to_token[id] = token
+
     def load_vocab(mut self, entries: List[String]):
         """Populate vocab from a list of token strings (id = index)."""
         for i in range(len(entries)):
