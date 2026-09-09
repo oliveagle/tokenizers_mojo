@@ -12,12 +12,12 @@ from whitespace import Whitespace, Metaspace, whitespace_split
 from harness import expect, expect_eq, expect_str, summarize
 
 
-def ws(s: String) -> List[String]:
+def ws(s: String) raises -> List[String]:
     var w = Whitespace()
     return w.pre_tokenize(s)
 
 
-def ms(s: String) -> List[String]:
+def ms(s: String) raises -> List[String]:
     var m = Metaspace()
     return m.pre_tokenize(s)
 

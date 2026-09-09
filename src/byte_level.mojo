@@ -10,6 +10,10 @@ Behavior baseline: HuggingFace tokenizers `pre_tokenizers/byte_level.rs`
 (upstream Rust, kept read-only in submodules/tokenizers/).
 """
 
+import traits
+
+from traits import PreTokenizer, Decoder
+
 
 struct ByteMapping:
     """GPT-2 byte<->unicode mapping tables (built once per instance)."""
@@ -145,7 +149,7 @@ def simple_gpt2_split(text: String) -> List[String]:
 # ---------------------------------------------------------------------------
 
 
-struct ByteLevelPreTokenizer:
+struct ByteLevelPreTokenizer(PreTokenizer):
     """Pre-tokenizer that maps every byte to a printable Unicode character.
 
     Attributes:
@@ -200,7 +204,7 @@ struct ByteLevelPreTokenizer:
 # ---------------------------------------------------------------------------
 
 
-struct ByteLevelDecoder:
+struct ByteLevelDecoder(Decoder):
     """Decoder that reverses ByteLevel pre-tokenization.
 
     Converts each byte-level Unicode character back to its original byte,

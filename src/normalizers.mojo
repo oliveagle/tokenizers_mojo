@@ -7,6 +7,10 @@ Phase 2: Lowercase (codepoint-wise, full Unicode range) and Strip
 (leading/trailing whitespace removal via String.strip()).
 """
 
+import traits
+
+from traits import Normalizer
+
 
 def _lower_one(cp: Int) -> Int:
     """Lowercase a single codepoint (full Basic Latin + Latin-1 Supplement
@@ -39,13 +43,13 @@ def _lower_str(s: String) -> String:
 # ---------------------------------------------------------------------------
 
 
-struct NFCNormalizer:
+struct NFCNormalizer(Normalizer):
     """Identity normalizer (Phase 1 placeholder)."""
 
     def __init__(out self):
         pass
 
-    def normalize(self, text: String) -> String:
+    def normalize(self, text: String) raises -> String:
         # TODO Phase 3: real NFC canonical composition.
         return text
 
@@ -55,31 +59,31 @@ def normalize_nfc(text: String) -> String:
     return text
 
 
-struct Lowercase:
+struct Lowercase(Normalizer):
     """Lowercase every character (upstream: normalizers::Lowercase)."""
 
     def __init__(out self):
         pass
 
-    def normalize(self, text: String) -> String:
+    def normalize(self, text: String) raises -> String:
         return _lower_str(text)
 
 
-struct Strip:
+struct Strip(Normalizer):
     """Strip leading and trailing whitespace (upstream: Strip left+right)."""
 
     def __init__(out self):
         pass
 
-    def normalize(self, text: String) -> String:
+    def normalize(self, text: String) raises -> String:
         return String(text.strip())
 
 
-struct LowercaseStrip:
+struct LowercaseStrip(Normalizer):
     """Compose Lowercase then Strip (handy for BERT-style pipelines)."""
 
     def __init__(out self):
         pass
 
-    def normalize(self, text: String) -> String:
+    def normalize(self, text: String) raises -> String:
         return String(_lower_str(text).strip())

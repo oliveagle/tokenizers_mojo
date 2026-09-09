@@ -69,7 +69,9 @@
       `special_tokens_mask` 正确标记，ids 与 HF 一致）
 - [x] 完整 `Encoding` 字段（新增 sequence_ids、push_special、type_ids 批量）；
       overflowing 待做
-- [ ] 引入 trait/接口抽象（Model/Normalizer/PreTokenizer/Decoder），支持多实现
+- [x] 引入 trait/接口抽象（`src/traits.mojo`：`Normalizer` / `PreTokenizer` /
+      `Model` / `Decoder`），所有现有 struct 显式 conform，并用泛型
+      `pipeline[N: Normalizer, P: PreTokenizer, M: Model]` 验证运行时多实现
 
 ### Phase 3 — 训练与规模化 `[ ]`
 - [ ] BPE Trainer（从语料训练 vocab/merges）

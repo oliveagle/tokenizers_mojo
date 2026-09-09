@@ -11,6 +11,10 @@ Behavior baseline:
     MergedWithNext semantics.  Tabs/newlines are NOT replaced (only 0x20).
 """
 
+import traits
+
+from traits import PreTokenizer
+
 
 # ---------------------------------------------------------------------------
 # Character predicates (subset of regex `\w` and `\s`)
@@ -49,7 +53,7 @@ def _is_whitespace(cp: Int) -> Bool:
 # ---------------------------------------------------------------------------
 
 
-struct Whitespace:
+struct Whitespace(PreTokenizer):
     """Split on word runs (`\\w+`) and punctuation runs (`[^\\w\\s]+`).
 
     Whitespace runs are removed (SplitDelimiterBehavior::Removed).  This
@@ -60,7 +64,7 @@ struct Whitespace:
     def __init__(out self):
         pass
 
-    def pre_tokenize(self, text: String) -> List[String]:
+    def pre_tokenize(self, text: String) raises -> List[String]:
         """Return the list of split tokens (whitespace removed)."""
         var tokens = List[String]()
         var current = String()
@@ -98,7 +102,7 @@ struct Whitespace:
 # ---------------------------------------------------------------------------
 
 
-struct Metaspace:
+struct Metaspace(PreTokenizer):
     """Replace spaces with a meta char and split (MergedWithNext).
 
     Defaults match upstream: replacement '▁', prepend Always, split true.
@@ -120,7 +124,7 @@ struct Metaspace:
         self.prepend_always = prepend_always
         self.split = split
 
-    def pre_tokenize(self, text: String) -> List[String]:
+    def pre_tokenize(self, text: String) raises -> List[String]:
         """Return Metaspace tokens (▁ for spaces, MergedWithNext split)."""
         var tokens = List[String]()
         var n = text.byte_length()
@@ -192,7 +196,7 @@ struct Metaspace:
 # ---------------------------------------------------------------------------
 
 
-def whitespace_split(text: String) -> List[String]:
+def whitespace_split(text: String) raises -> List[String]:
     """Standalone Whitespace pre-tokenization helper."""
     var ws = Whitespace()
     return ws.pre_tokenize(text)

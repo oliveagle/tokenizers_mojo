@@ -12,7 +12,7 @@ from split import SplitPreTokenizer, split_on
 from harness import expect, expect_eq, expect_str, summarize
 
 
-def run(sep: String, beh: String, s: String) -> List[String]:
+def run(sep: String, beh: String, s: String) raises -> List[String]:
     var sp = SplitPreTokenizer(sep, beh)
     return sp.pre_tokenize(s)
 

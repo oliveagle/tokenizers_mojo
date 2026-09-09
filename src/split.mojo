@@ -12,8 +12,12 @@ Behaviors (SplitDelimiterBehavior):
                         delimiter with an empty following piece stays alone
 """
 
+import traits
 
-struct SplitPreTokenizer:
+from traits import PreTokenizer
+
+
+struct SplitPreTokenizer(PreTokenizer):
     """Split on a literal separator with a configurable behavior.
 
     Attributes:
@@ -32,7 +36,7 @@ struct SplitPreTokenizer:
         self.behavior = behavior
         self.invert = False
 
-    def pre_tokenize(self, text: String) -> List[String]:
+    def pre_tokenize(self, text: String) raises -> List[String]:
         """Return the split tokens per the configured behavior."""
         var tokens = List[String]()
         var n = text.byte_length()
@@ -107,7 +111,7 @@ struct SplitPreTokenizer:
 
 def split_on(
     text: String, separator: String, behavior: String = "removed"
-) -> List[String]:
+) raises -> List[String]:
     """Standalone Split pre-tokenization helper."""
     var sp = SplitPreTokenizer(separator, behavior)
     return sp.pre_tokenize(text)

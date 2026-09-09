@@ -7,9 +7,12 @@ matches GPT-2 / HF ByteLevel BPE semantics for the minimal pipeline.
 """
 
 import byte_level
+import traits
+
+from traits import Model
 
 
-struct BPE:
+struct BPE(Model):
     """Byte-level BPE model.
 
     Attributes:
