@@ -86,18 +86,21 @@ git submodule update --init --recursive
 - 尚未引入任何 Mojo 工具链配置文件
 - 尚未开始 Mojo 代码
 
-## 待定（动手前要敲定）
+## 已确定的关键决策
 
-- [ ] 包/构建管理：`pixi` / `magic` / `mojoproject.toml` 选哪个？
-- [ ] 工具链版本：Mojo 25.x？还是 nightly？
-- [ ] 第一阶段覆盖范围：建议从 BPE Model + NFC Normalizer + ByteLevel
-      PreTokenizer 起手，覆盖一个 GPT-2 风格的最小可用闭环，再向外扩。
-- [ ] 对外 API 形态：是"类 HF Python `Tokenizer`"风格，还是更 Mojo-native
-      （struct + fn）？两种风格差异不小，影响整个 src 布局。
-- [ ] Python 互操作：是否需要 `Python` interop？是否要直接生成 `.so` 给
-      `transformers` 加载？
-- [ ] 性能目标：相对 Rust 实现的目标加速比 / 内存占用上限。
-- [ ] 训练器：先支持预训练 vocab 加载（`from_file`），把训练器留到后期。
+> 详细记录见 `docs/adr-0001-stack-and-scope.md` 与 `docs/goals/goals.md`。
+
+1. **构建/包管理**：pixi（`pixi.toml`，Mojo 工具链系统安装于 PATH）。
+2. **API 形态**：Mojo-native（`struct` + `def`），不镜像 HF Python API。
+3. **第一阶段范围**：BPE Model + ByteLevel PreTokenizer/Decoder +
+   NFC Normalizer（Phase 1 恒等占位），跑通 GPT-2 风格最小闭环。
+
+## 待定（后续阶段再敲定）
+
+- [ ] Phase 2 的 Normalizer/PreTokenizer/PostProcessor 扩展优先级
+- [ ] 是否引入 trait 抽象以支持多模型运行时切换（Phase 2）
+- [ ] Python 互操作方式（Phase 4）
+- [ ] 性能优化与基准目标（Phase 3）
 
 ## 给 AI agent 的补充说明
 
