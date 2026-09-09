@@ -80,8 +80,8 @@
       `Model` / `Decoder`），所有现有 struct 显式 conform，并用泛型
       `pipeline[N: Normalizer, P: PreTokenizer, M: Model]` 验证运行时多实现
 
-### Phase 3 — 训练与规模化 `[ ]`
-- [ ] BPE Trainer（从语料训练 vocab/merges）
+### Phase 3 — 训练与规模化 `[~]`
+- [x] BPE Trainer（从语料训练 vocab/merges）— 12 项白盒测试对照 HF tokenizers 对齐
 - [ ] `Tokenizer.from_pretrained(...)` 直接读取 HF `tokenizer.json`
 - [ ] 并行 / 批量 encode（多线程，参照上游 rayon 思路）
 - [ ] 性能基准：与 Rust 版对比（`pixi run bench`）
@@ -117,6 +117,14 @@
 - 2026-09-10：真实 Unicode Normalizer 完成（NFD/NFKD/NFC/NFKC，表从
   Python `unicodedata` 生成于 `src/unicode_data.mojo`，算法层
   `src/unicode.mojo`，Hangul 走标准算法路径）。
+- 2026-09-10：BPE Trainer 完成（`src/bpe_trainer.mojo` + 12 项测试
+  `tests/test_bpe_trainer.mojo`）。对齐 HF tokenizers：
+  - minimal 配置下 vocab + merges 完全一致
+  - eow (`</w>`) / bert (`##`) 配置下 vocab 集合与 merge 序列一致
+  - 上游 Rust HashMap 迭代序导致的 id 顺序非确定性，我方实现保持
+    **确定性**（对截断边界 tie / suffix/prefix token 插入顺序固定）
+  - `max_token_length` 门限按上游 `Word::merge` 语义：符号始终合并，
+    新 pair 计数受 `x.len + y.len < max_token_length` 限制
 - 2026-09-10：正则引擎 + 正则 Split 完成。`src/regex.mojo` 自研回溯 VM
   引擎（字节码 + Thompson NFA 量词/交替，贪心回溯），支持
   `* + ? {n} {n,} {n,m}`、分组、交替、锚点、字符类、`\d\w\s` 及大写否定；
