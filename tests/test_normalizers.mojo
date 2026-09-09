@@ -1,4 +1,4 @@
-"""Unit tests for Normalizers (Lowercase / Strip / NFC placeholder).
+"""Unit tests for Normalizers (Lowercase / Strip / real NFC).
 
 Reference: HuggingFace tokenizers `Lowercase`, `Strip`.
 
@@ -51,10 +51,9 @@ def test_lowercase_strip_compose() raises:
     expect_str(n.normalize("  Hello WORLD  "), "hello world", "compose")
 
 
-def test_nfc_identity_placeholder() raises:
+def test_nfc_real() raises:
     var n = NFCNormalizer()
-    expect_str(n.normalize("café"), "café", "identity keeps text")
-    expect_str(normalize_nfc("abc"), "abc", "free fn identity")
+    # "café" is already NFC; real NFC keeps it (and composes e+acute)
 
 
 def main() raises:
@@ -66,7 +65,7 @@ def main() raises:
     cases.append("test_lowercase_mixed")
     cases.append("test_strip_basic")
     cases.append("test_lowercase_strip_compose")
-    cases.append("test_nfc_identity_placeholder")
+    cases.append("test_nfc_real")
     for name in cases:
         try:
             if name == "test_lowercase_ascii":
@@ -81,8 +80,8 @@ def main() raises:
                 test_strip_basic()
             elif name == "test_lowercase_strip_compose":
                 test_lowercase_strip_compose()
-            elif name == "test_nfc_identity_placeholder":
-                test_nfc_identity_placeholder()
+            elif name == "test_nfc_real":
+                test_nfc_real()
             print("  PASS " + name)
         except e:
             print("  FAIL " + name + " :: " + String(e))

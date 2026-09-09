@@ -2,14 +2,17 @@
 
 Behavior baseline: HuggingFace tokenizers `normalizers/` (upstream Rust).
 
-Phase 1: NFC is an identity placeholder (real NFC is Phase 2+ TODO).
-Phase 2: Lowercase (codepoint-wise, full Unicode range) and Strip
+Phase 2: real NFD/NFKD/NFC/NFKC normalizers (UAX #15) backed by
+auto-generated decomposition / composition / CCC tables in
+`unicode_data.mojo` (cached once via `UnicodeData`). Lowercase
 (leading/trailing whitespace removal via String.strip()).
 """
 
 import traits
+import unicode
 
 from traits import Normalizer
+from unicode import UnicodeData
 
 
 def _lower_one(cp: Int) -> Int:
@@ -44,19 +47,62 @@ def _lower_str(s: String) -> String:
 
 
 struct NFCNormalizer(Normalizer):
-    """Identity normalizer (Phase 1 placeholder)."""
+    """Canonical Composition (NFC) per UAX #15.
+
+    Holds a `UnicodeData` so the decomposition / composition / CCC tables
+    are built only once per normalizer instance.
+    """
+
+    var data: UnicodeData
 
     def __init__(out self):
-        pass
+        self.data = UnicodeData()
 
     def normalize(self, text: String) raises -> String:
-        # TODO Phase 3: real NFC canonical composition.
-        return text
+        return self.data.nfc(text)
 
 
-def normalize_nfc(text: String) -> String:
-    """Free-function NFC (Phase 1: identity)."""
-    return text
+def normalize_nfc(text: String) raises -> String:
+    """Free-function NFC (rebuilds tables on each call; prefer
+    constructing a `UnicodeData` and calling `nfc` for hot paths)."""
+    var data = UnicodeData()
+    return data.nfc(text)
+
+
+struct NFDNormalizer(Normalizer):
+    """Canonical Decomposition (NFD) per UAX #15."""
+
+    var data: UnicodeData
+
+    def __init__(out self):
+        self.data = UnicodeData()
+
+    def normalize(self, text: String) raises -> String:
+        return self.data.nfd(text)
+
+
+struct NFKDNormalizer(Normalizer):
+    """Compatibility Decomposition (NFKD) per UAX #15."""
+
+    var data: UnicodeData
+
+    def __init__(out self):
+        self.data = UnicodeData()
+
+    def normalize(self, text: String) raises -> String:
+        return self.data.nfkd(text)
+
+
+struct NFKCNormalizer(Normalizer):
+    """Compatibility Composition (NFKC) per UAX #15."""
+
+    var data: UnicodeData
+
+    def __init__(out self):
+        self.data = UnicodeData()
+
+    def normalize(self, text: String) raises -> String:
+        return self.data.nfkc(text)
 
 
 struct Lowercase(Normalizer):

@@ -58,7 +58,9 @@
 
 ### Phase 2 — 对齐 & 扩展 `[~]`
 - [x] 补全 `Normalizer`：Lowercase（ASCII/Latin-1/Greek/Cyrillic）、Strip、
-      LowercaseStrip 组合；真实 NFC/NFKC/NFD/NFKD 仍为 TODO
+      LowercaseStrip 组合；真实 NFC/NFKC/NFD/NFKD（UAX #15，自动生成的
+      分解/组合/CCC 表经 `UnicodeData` 一次性缓存，含 Hangul 算法分解
+      与组合，14 项测试与 Python `unicodedata` 逐字符对齐）
 - [x] 补全 `PreTokenizer`：`Whitespace`（`\w+|[^\w\s]+` 语义）、`Metaspace`
       （▁ 替换 + MergedWithNext 切分）、`Split`（字面量分隔符 × 4 种
       behavior，均与 HF 一致）、`BertPreTokenizer`（空白 removed + 标点
@@ -111,4 +113,7 @@
 - 2026-09-10：Truncation/overflowing 完成（`Encoding.truncate` 滑窗 +
   `truncate_encodings` 单/对 × LongestFirst/OnlyFirst/OnlySecond，
   overflow 以 `TruncatedEncodings` 独立返回——Mojo 递归字段受限）。
+- 2026-09-10：真实 Unicode Normalizer 完成（NFD/NFKD/NFC/NFKC，表从
+  Python `unicodedata` 生成于 `src/unicode_data.mojo`，算法层
+  `src/unicode.mojo`，Hangul 走标准算法路径）。
 - 跨模块决策记入 `docs/adr-*.md`；组件设计记入 `docs/design-*.md`。
