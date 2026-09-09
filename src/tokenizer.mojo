@@ -120,6 +120,27 @@ struct Tokenizer:
             self._encode_segment(enc, String(text[byte=seg_start:n]), seg_start)
         return enc^
 
+    def encode_batch(self, texts: List[String]) raises -> List[Encoding]:
+        """Encode each input text in `texts` into an Encoding.
+
+        Mirrors HuggingFace `Tokenizer::encode_batch` (sequential for now --
+        Mojo 1.0.0 stdlib does not yet expose a threading primitive, so the
+        upstream `par_iter` path is replaced by a sequential loop. The
+        public API shape and per-encoding equivalence with `encode()` are
+        preserved, so swapping in a parallel worker is a localized change.)
+        """
+        var out = List[Encoding]()
+        for i in range(len(texts)):
+            out.append(self.encode(texts[i]))
+        return out^
+
+    def decode_batch(self, encodings: List[Encoding]) raises -> List[String]:
+        """Decode each Encoding in `encodings` back to text."""
+        var out = List[String]()
+        for i in range(len(encodings)):
+            out.append(self.decode(encodings[i]))
+        return out^
+
     def _match_special(self, text: String, start: Int) -> String:
         """Return the longest special token matched at byte position `start`,
         or "" if nothing matches."""
