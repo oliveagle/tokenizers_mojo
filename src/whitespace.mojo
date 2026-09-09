@@ -48,6 +48,21 @@ def _is_whitespace(cp: Int) -> Bool:
     return cp == 0x20 or cp == 0x09 or cp == 0x0A or cp == 0x0D
 
 
+def is_digit(cp: Int) -> Bool:
+    """Public: regex `\\d` (ASCII digits)."""
+    return _is_digit(cp)
+
+
+def is_word_char(cp: Int) -> Bool:
+    """Public: regex `\\w` (letters, digits, underscore)."""
+    return _is_word_char(cp)
+
+
+def is_whitespace(cp: Int) -> Bool:
+    """Public: regex `\\s` (space, tab, LF, CR)."""
+    return _is_whitespace(cp)
+
+
 # ---------------------------------------------------------------------------
 # Whitespace
 # ---------------------------------------------------------------------------

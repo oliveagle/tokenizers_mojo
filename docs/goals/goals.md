@@ -56,7 +56,7 @@
 3. [x] `decode(encode(text))` 在 add_prefix_space 语义下与上游一致（含前置空格行为）。
 4. [x] 所有公共类型为 `struct` + 方法，无 Python 类型渗入对外 API。
 
-### Phase 2 — 对齐 & 扩展 `[~]`
+### Phase 2 — 对齐 & 扩展 `[x]`
 - [x] 补全 `Normalizer`：Lowercase（ASCII/Latin-1/Greek/Cyrillic）、Strip、
       LowercaseStrip 组合；真实 NFC/NFKC/NFD/NFKD（UAX #15，自动生成的
       分解/组合/CCC 表经 `UnicodeData` 一次性缓存，含 Hangul 算法分解
@@ -64,7 +64,8 @@
 - [x] 补全 `PreTokenizer`：`Whitespace`（`\w+|[^\w\s]+` 语义）、`Metaspace`
       （▁ 替换 + MergedWithNext 切分）、`Split`（字面量分隔符 × 4 种
       behavior，均与 HF 一致）、`BertPreTokenizer`（空白 removed + 标点
-      isolated，含 Unicode P 类别）；正则 Split 待做
+      isolated，含 Unicode P 类别）、`RegexSplitPreTokenizer`（正则分隔符
+      × 4 种 behavior，底层为自研回溯 VM 引擎 `src/regex.mojo`）
 - [x] `PostProcessor`：RobertaProcessing（`<s>`...`</s>`）、BertProcessing
       （`[CLS]`...`[SEP]`）、TemplateProcessing（`$A/$B/$0/$1` +
       显式 `:type_id` 后缀 + `[SPECIAL]:N` 全支持，9 项 HF 参考
@@ -116,4 +117,10 @@
 - 2026-09-10：真实 Unicode Normalizer 完成（NFD/NFKD/NFC/NFKC，表从
   Python `unicodedata` 生成于 `src/unicode_data.mojo`，算法层
   `src/unicode.mojo`，Hangul 走标准算法路径）。
+- 2026-09-10：正则引擎 + 正则 Split 完成。`src/regex.mojo` 自研回溯 VM
+  引擎（字节码 + Thompson NFA 量词/交替，贪心回溯），支持
+  `* + ? {n} {n,} {n,m}`、分组、交替、锚点、字符类、`\d\w\s` 及大写否定；
+  65 个 `re` 对照用例 + 14 组白盒测试全绿。`RegexSplitPreTokenizer`
+  提供 4 种 SplitDelimiterBehavior（removed/isolated/merged_with_previous/
+  merged_with_next）。Phase 2 至此全部完成。
 - 跨模块决策记入 `docs/adr-*.md`；组件设计记入 `docs/design-*.md`。
