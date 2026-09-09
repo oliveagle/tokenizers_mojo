@@ -33,7 +33,7 @@
 - [x] 本文档（目标文件）
 - [x] ADR-0001（记录上述 3 个技术决策）
 
-### Phase 1 — GPT-2 风格最小闭环（BPE + ByteLevel）`[~]`
+### Phase 1 — GPT-2 风格最小闭环（BPE + ByteLevel）`[x]`
 目标：从「原始文本」到「token ids」再到「解码回文本」的完整链路跑通，
 并用**内联小型 vocab/merges 测试夹具**验证，不依赖外网下载 GPT-2 权重。
 
@@ -45,14 +45,16 @@
 - [x] `Tokenizer` 主结构（normalize → pretokenize → model → encode）
 - [x] 单元测试：`tests/test_byte_level.mojo`、`test_bpe.mojo`、`test_encoding.mojo`、`test_tokenizer.mojo`（42 项全绿）
 - [x] 示例：`examples/gpt2_minimal.mojo`（roundtrip `' hello world'` 通过）
-- [ ] 用真实 GPT-2 `vocab.json` + `merges.txt` 做一次端到端冒烟验证
+- [x] 用真实 GPT-2 `vocab.json` + `merges.txt` 做一次端到端冒烟验证
       （对比 HF `tokenizers` / `transformers` 输出，确认 ids 一致）
+      — 见 `scripts/build_gpt2_smoke.py` + `tests/test_gpt2_smoke.mojo`
 
 **Phase 1 验收标准**
-1. `pixi run test` 全绿（无外网依赖）。
-2. 对同一段英文输入，编码出的 ids 与上游 Rust `tokenizers` 完全一致。
-3. `decode(encode(text))` 在 add_prefix_space 语义下与上游一致（含前置空格行为）。
-4. 所有公共类型为 `struct` + 方法，无 Python 类型渗入对外 API。
+1. [x] `pixi run test` 全绿（无外网依赖；44 项测试）。
+2. [x] 对同一段英文输入，编码出的 ids 与上游 Rust `tokenizers` 完全一致
+      （8 个真实句子，闭包子集 401 tokens / 4076 merges，ids 逐位匹配 HF）。
+3. [x] `decode(encode(text))` 在 add_prefix_space 语义下与上游一致（含前置空格行为）。
+4. [x] 所有公共类型为 `struct` + 方法，无 Python 类型渗入对外 API。
 
 ### Phase 2 — 对齐 & 扩展 `[ ]`
 - [ ] 补全 `Normalizer`：真实 NFC/NFKC/NFD/NFKD、Lowercase、Strip 等

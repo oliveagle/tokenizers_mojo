@@ -23,10 +23,18 @@ git submodule update --init --recursive
 
 ```bash
 pixi run check      # 编译验证整个 src/ 树
-pixi run fmt       # mojo format src tests examples
-pixi run test      # 运行 tests/ 下全部测试
+pixi run fmt        # mojo format src tests examples
+pixi run test       # 运行 tests/ 下全部测试（44 项，含真实 GPT-2 冒烟）
 pixi run example-gpt2  # 运行 examples/gpt2_minimal.mojo
 ```
+
+## 真实 GPT-2 冒烟测试
+
+`tests/test_gpt2_smoke.mojo` 用 **真实 GPT-2 `vocab.json` + `merges.txt`
+的闭包子集**（401 tokens / 4076 merges，覆盖 8 句英文样本的所有 merge 路径）
+验证端到端 ids 与 HuggingFace `tokenizers` 一致。数据模块
+`tests/gpt2_smoke_data.mojo` 由 `scripts/build_gpt2_smoke.py` 离线生成（重新生成
+需要联网下载 `openai-community/gpt2`，不需要时无需联网）。
 
 > 注意：本仓库用的 Mojo 1.0.0 没有 `mojo check` / `mojo test` 命令，
 > `check` 用 `mojo build src/typecheck.mojo` 代替，`test` 用
