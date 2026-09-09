@@ -13,6 +13,7 @@ import tokenizer
 import whitespace
 import added_token
 import post_processor
+import split
 
 
 def main():

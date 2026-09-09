@@ -60,11 +60,13 @@
 - [x] 补全 `Normalizer`：Lowercase（ASCII/Latin-1/Greek/Cyrillic）、Strip、
       LowercaseStrip 组合；真实 NFC/NFKC/NFD/NFKD 仍为 TODO
 - [x] 补全 `PreTokenizer`：`Whitespace`（`\w+|[^\w\s]+` 语义）、`Metaspace`
-      （▁ 替换 + MergedWithNext 切分）；BertPreTokenizer / Split 待做
+      （▁ 替换 + MergedWithNext 切分）、`Split`（字面量分隔符 × 4 种
+      behavior，均与 HF 一致）；BertPreTokenizer / 正则 Split 待做
 - [x] `PostProcessor`：RobertaProcessing（`<s>`...`</s>`）、BertProcessing
       （`[CLS]`...`[SEP]`）；TemplateProcessing 待做
-- [x] `AddedToken` 机制（content/special/single_word/lstrip/rstrip 结构；
-      接入 Tokenizer 的 special-token 前置切分待做）
+- [x] `AddedToken` 机制（content/special/single_word/lstrip/rstrip 结构，
+      并已接入 Tokenizer：`add_special_token` + 最长匹配前置切分，
+      `special_tokens_mask` 正确标记，ids 与 HF 一致）
 - [x] 完整 `Encoding` 字段（新增 sequence_ids、push_special、type_ids 批量）；
       overflowing 待做
 - [ ] 引入 trait/接口抽象（Model/Normalizer/PreTokenizer/Decoder），支持多实现
