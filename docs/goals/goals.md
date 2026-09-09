@@ -95,7 +95,7 @@
       `scripts/tokenizers_mojo_py.py` + `tests/test_python_interop.py`）。
       ADR-0002 记录 `.so` 直连受阻于 Mojo 1.0.0 `@export` 限制；
       文件桥接验证 6 句语料 encode+decode 与 HF 一致
-- [x] 发布管线起步（版本 0.3.0 + `CHANGELOG.md` + README 状态；CI 待补）
+- [x] 发布管线（版本 0.3.0 + `CHANGELOG.md` + README 状态 + `.github/workflows/ci.yml`）
 
 ## 4. 非目标（明确不做）
 
