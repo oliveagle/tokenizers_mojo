@@ -23,6 +23,12 @@ import truncation
 import unicode
 import unicode_data
 import traits
+import wordpiece
+import wordlevel
+import unigram
+import wordpiece_trainer
+import wordlevel_trainer
+import unigram_trainer
 
 
 def main():

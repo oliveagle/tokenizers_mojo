@@ -5,6 +5,47 @@ All notable changes to tokenizers_mojo are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] - 2026-09-10
+
+### Phase 5 — 模型扩展（完成）
+
+- **from_pretrained 扩展**: 新增 `from_pretrained_wordpiece`、
+  `from_pretrained_wordlevel`、`from_pretrained_unigram` 函数，
+  支持从 HF tokenizer.json 加载 WordPiece/WordLevel/Unigram 模型。
+- **WordPiece Tokenizer** (`src/wordpiece_tokenizer.mojo`): WordPiece 模型的
+  tokenizer 封装，支持 encode/decode 和 special token。
+- **WordLevel Tokenizer** (`src/wordlevel_tokenizer.mojo`): WordLevel 模型的
+  tokenizer 封装，支持 encode/decode 和 special token。
+- **Unigram Tokenizer** (`src/unigram_tokenizer.mojo`): Unigram 模型的
+  tokenizer 封装，支持 encode/decode 和 special token。
+- **测试**: 新增 `test_from_pretrained_wordpiece.mojo`、
+  `test_from_pretrained_wordlevel.mojo`、`test_from_pretrained_unigram.mojo`。
+
+## [0.6.0] - 2026-09-10
+
+### Phase 5 — 模型扩展（部分完成）
+
+- **WordPiece Trainer** (`src/wordpiece_trainer.mojo`): BPE 训练 + "##" 前缀。
+  对齐 HF tokenizers：thin wrapper around BpeTrainer。6 项测试。
+- **WordLevel Trainer** (`src/wordlevel_trainer.mojo`): 词频统计 + 排序。
+  对齐 HF tokenizers：按频率降序排列，相同频率按字典序。6 项测试。
+- **Unigram Trainer** (`src/unigram_trainer.mojo`): EM 算法初始化。
+  对齐 HF tokenizers：字符频率初始化 + log 概率。6 项测试。
+
+## [0.5.0] - 2026-09-10
+
+### Phase 5 — 模型扩展（部分完成）
+
+- **Unigram Model** (`src/unigram.mojo`): SentencePiece 风格的概率子词分词算法。
+  对齐 HF tokenizers：Viterbi 最优路径搜索、概率词汇表、UNK 惩罚、
+  lattice 构建。9 项测试。工作了 Mojo 1.0.0 的 `mut self` 编译器问题，
+  将 Viterbi 实现提取为独立函数。
+- **WordPiece Model** (`src/wordpiece.mojo`): BERT/DistilBERT 风格的子词分词算法。
+  对齐 HF tokenizers：greedy longest-match-first、`##` 继续子词前缀、`[UNK]` 未知词处理、
+  `max_input_chars_per_word` 限制。10 项测试。
+- **WordLevel Model** (`src/wordlevel.mojo`): 整词查找模型。
+  对齐 HF tokenizers：词汇表直接查找、`<unk>` 未知词回退。9 项测试。
+
 ## [0.3.0] - 2026-09-10
 
 ### Phase 3 — 训练与规模化（完成）

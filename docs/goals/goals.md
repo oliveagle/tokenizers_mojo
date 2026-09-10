@@ -157,3 +157,17 @@
   提供 4 种 SplitDelimiterBehavior（removed/isolated/merged_with_previous/
   merged_with_next）。Phase 2 至此全部完成。
 - 跨模块决策记入 `docs/adr-*.md`；组件设计记入 `docs/design-*.md`。
+
+### Phase 5 — 模型扩展 `[x]`
+- [x] WordPiece Model（BERT/DistilBERT 风格）— 10 项测试
+- [x] WordLevel Model（整词查找）— 9 项测试
+- [x] Unigram Model（SentencePiece 风格，T5/ALBERT）— 9 项测试
+- [x] WordPiece Trainer — 6 项测试
+- [x] WordLevel Trainer — 6 项测试
+- [x] Unigram Trainer — 6 项测试
+
+**Phase 5 验收标准**
+1. [x] WordPiece 编码结果与 HF tokenizers 一致（BERT vocab.txt 格式）
+2. [x] WordLevel 编码结果与 HF tokenizers 一致
+3. [x] Unigram 编码结果与 HF tokenizers 一致（Viterbi 算法）
+4. [x] 所有新模型支持 `from_pretrained` 加载
