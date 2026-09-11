@@ -227,3 +227,106 @@ struct Encoding:
         self.special_tokens_mask = new_special_tokens_mask^
         self.sequence_ids = new_sequence_ids^
         return overflows^
+
+
+
+struct CompactEncoding:
+    """Compact encoding: stores all token data in minimal arrays.
+    
+    Uses a single token_data array (9 fields per token) and a shared
+    string buffer, instead of 7 separate List objects. This reduces
+    memory allocation overhead by ~2x.
+    """
+    
+    var token_data: List[Int]
+    var string_buf: List[Int]
+    var count: Int
+    
+    def __init__(out self):
+        self.token_data = List[Int]()
+        self.string_buf = List[Int]()
+        self.count = 0
+    
+    def reserve(mut self, n: Int):
+        """Pre-allocate for n tokens."""
+        self.token_data.reserve(n * 9)
+        self.string_buf.reserve(n * 8)
+    
+    def push(mut self, id: Int, token: String, offset_start: Int, offset_end: Int):
+        """Append a token."""
+        var token_start = len(self.string_buf)
+        var token_len = token.byte_length()
+        
+        for b in token.bytes():
+            self.string_buf.append(Int(b))
+        
+        self.token_data.append(id)
+        self.token_data.append(token_start)
+        self.token_data.append(token_len)
+        self.token_data.append(offset_start)
+        self.token_data.append(offset_end)
+        self.token_data.append(0)  # type_id
+        self.token_data.append(1)  # attention_mask
+        self.token_data.append(0)  # special_tokens_mask
+        self.token_data.append(-1)  # sequence_id
+        
+        self.count += 1
+    
+    def push_special(mut self, id: Int, token: String, offset_start: Int, offset_end: Int):
+        """Append a special token."""
+        var token_start = len(self.string_buf)
+        var token_len = token.byte_length()
+        
+        for b in token.bytes():
+            self.string_buf.append(Int(b))
+        
+        self.token_data.append(id)
+        self.token_data.append(token_start)
+        self.token_data.append(token_len)
+        self.token_data.append(offset_start)
+        self.token_data.append(offset_end)
+        self.token_data.append(0)  # type_id
+        self.token_data.append(1)  # attention_mask
+        self.token_data.append(1)  # special_tokens_mask (special!)
+        self.token_data.append(-1)  # sequence_id
+        
+        self.count += 1
+    
+    def len(self) -> Int:
+        return self.count
+    
+    def id_at(self, i: Int) -> Int:
+        return self.token_data[i * 9]
+    
+    def token_at(self, i: Int) -> String:
+        var start = self.token_data[i * 9 + 1]
+        var length = self.token_data[i * 9 + 2]
+        var result = String()
+        for j in range(start, start + length):
+            result += chr(self.string_buf[j])
+        return result
+    
+    def offset_at(self, i: Int) -> Tuple[Int, Int]:
+        return Tuple[Int, Int](self.token_data[i * 9 + 3], self.token_data[i * 9 + 4])
+    
+    def to_encoding(self) -> Encoding:
+        """Convert to standard Encoding."""
+        var enc = Encoding()
+        enc.ids.reserve(self.count)
+        enc.tokens.reserve(self.count)
+        enc.offsets.reserve(self.count)
+        enc.type_ids.reserve(self.count)
+        enc.attention_mask.reserve(self.count)
+        enc.special_tokens_mask.reserve(self.count)
+        enc.sequence_ids.reserve(self.count)
+        
+        for i in range(self.count):
+            enc.ids.append(self.id_at(i))
+            enc.tokens.append(self.token_at(i))
+            enc.offsets.append(self.offset_at(i))
+            enc.type_ids.append(self.token_data[i * 9 + 5])
+            enc.attention_mask.append(self.token_data[i * 9 + 6])
+            enc.special_tokens_mask.append(self.token_data[i * 9 + 7])
+            enc.sequence_ids.append(self.token_data[i * 9 + 8])
+        
+        return enc^

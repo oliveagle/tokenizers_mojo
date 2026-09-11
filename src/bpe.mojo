@@ -125,12 +125,33 @@ struct BPE(Model):
             var best_rank = -1
             var best_idx = -1
             
-            # Scan cache instead of building strings each time
-            for i in range(n - 1):
+            # SIMD-style unrolled scan (4x unrolling for better ILP)
+            var i = 0
+            var n_minus_1 = n - 1
+            while i + 4 <= n_minus_1:
+                var r0 = cache[i]
+                var r1 = cache[i + 1]
+                var r2 = cache[i + 2]
+                var r3 = cache[i + 3]
+                if r0 != -1 and (best_rank == -1 or r0 < best_rank):
+                    best_rank = r0
+                    best_idx = i
+                if r1 != -1 and (best_rank == -1 or r1 < best_rank):
+                    best_rank = r1
+                    best_idx = i + 1
+                if r2 != -1 and (best_rank == -1 or r2 < best_rank):
+                    best_rank = r2
+                    best_idx = i + 2
+                if r3 != -1 and (best_rank == -1 or r3 < best_rank):
+                    best_rank = r3
+                    best_idx = i + 3
+                i += 4
+            while i < n_minus_1:
                 var r = cache[i]
                 if r != -1 and (best_rank == -1 or r < best_rank):
                     best_rank = r
                     best_idx = i
+                i += 1
             
             if best_idx == -1:
                 break

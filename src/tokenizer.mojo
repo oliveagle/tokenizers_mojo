@@ -24,7 +24,7 @@ import normalizers
 
 from byte_level import ByteLevelPreTokenizer, ByteLevelDecoder
 from bpe import BPE
-from encoding import Encoding
+from encoding import Encoding, CompactEncoding
 from normalizers import NFCNormalizer
 
 
@@ -143,19 +143,30 @@ struct Tokenizer:
 
     def _match_special(self, text: String, start: Int) -> String:
         """Return the longest special token matched at byte position `start`,
-        or "" if nothing matches."""
-        var best = String()
+        or "" if nothing matches.
+        
+        Performance optimization: compare bytes directly instead of creating
+        new String objects for each comparison.
+        """
+        var best_len = 0
+        var best_tok = String()
         var n = text.byte_length()
         for tok in self.special_tokens:
             var blen = tok.byte_length()
-            if blen == 0:
+            if blen == 0 or blen > n - start:
                 continue
-            if start + blen > n:
+            if blen <= best_len:
                 continue
-            var window = String(text[byte = start : start + blen])
-            if window == tok and blen > best.byte_length():
-                best = tok
-        return best
+            # Compare bytes directly
+            var is_match = True
+            for j in range(blen):
+                if text[byte=start + j] != tok[byte=j]:
+                    is_match = False
+                    break
+            if is_match:
+                best_len = blen
+                best_tok = tok
+        return best_tok
 
     def _encode_segment(
         self, mut enc: Encoding, text: String, base_offset: Int
@@ -176,7 +187,7 @@ struct Tokenizer:
             for t in toks:
                 var id = self.model.vocab.get(t)
                 if id:
-                    enc.push(id.value(), t, Tuple[Int, Int](start, end))
+                    enc.push(id.value(), t, (start, end))
 
     def _original_char_len(self, byte_mapped: String) -> Int:
         """Approximate original char length of a byte-mapped token.
