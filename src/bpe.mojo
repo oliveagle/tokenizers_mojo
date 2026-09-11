@@ -80,7 +80,6 @@ struct BPE(Model):
             cache.append(-1)
         
         # Initialize cache with adjacent pair ranks
-        var buf = String()
         for i in range(n - 1):
             buf = String()
             buf += parts[i]
