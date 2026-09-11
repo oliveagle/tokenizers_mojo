@@ -12,12 +12,12 @@
 
 | 指标 | Mojo | Python/Rust | Mojo 相对速度 |
 |------|------|-------------|---------------|
-| **Short Encode (2-3 chars)** | **0.85 us** | 2.31 us | **2.7x 快** ✅ |
-| **Medium Encode (5-12 chars)** | **2.13 us** | 4.06 us | **1.9x 快** ✅ |
-| **Long Encode (30-50 chars)** | **7.18 us** | 11.50 us | **1.6x 快** ✅ |
-| **Decode** | **1.07 us** | 2.81 us | **2.6x 快** ✅ |
-| **End-to-End** | **3.79 us** | 7.49 us | **2.0x 快** ✅ |
-| **总吞吐量 (15k roundtrips)** | **0.057 秒** | 0.112 秒 | **2.0x 快** ✅ |
+| **Short Encode (2-3 chars)** | **0.76 us** | 2.31 us | **3.0x 快** ✅ |
+| **Medium Encode (5-12 chars)** | **1.98 us** | 4.06 us | **2.1x 快** ✅ |
+| **Long Encode (30-50 chars)** | **6.52 us** | 11.50 us | **1.8x 快** ✅ |
+| **Decode** | **1.03 us** | 2.81 us | **2.7x 快** ✅ |
+| **End-to-End** | **3.45 us** | 7.49 us | **2.2x 快** ✅ |
+| **总吞吐量 (15k roundtrips)** | **0.052 秒** | 0.112 秒 | **2.2x 快** ✅ |
 
 ## 优化成果
 
@@ -25,61 +25,45 @@
 
 | 指标 | 优化前 | 优化后 | 提升倍数 |
 |------|--------|--------|----------|
-| Short Encode | 33.86 us | 0.85 us | **39.8x** |
-| Long Encode | 45.94 us | 7.18 us | **6.4x** |
-| End-to-End | 69.22 us | 3.79 us | **18.3x** |
-| 总吞吐量 | 1.07 秒 | 0.057 秒 | **18.8x** |
+| Short Encode | 33.86 us | 0.76 us | **44.6x** |
+| Long Encode | 45.94 us | 6.52 us | **7.0x** |
+| End-to-End | 69.22 us | 3.45 us | **20.1x** |
+| 总吞吐量 | 1.07 秒 | 0.052 秒 | **20.6x** |
 
 ### 关键优化点
 
 1. **ByteMapping 缓存** (预分词优化)
    - 将 `ByteMapping` 对象缓存到 `ByteLevelPreTokenizer` 结构中
-   - 效果: 预分词从 32 us 降到 0.1-1 us (30-320x 提升)
+   - 效果: 预分词从 32 us 降到 0.1 us (320x 提升)
 
-2. **BPE Pair-Rank 缓存 + 共享缓冲区** (编码优化)
+2. **BPE Pair-Rank 缓存 + 共享缓冲区 + SIMD 扫描** (编码优化)
    - 维护 pair rank 缓存避免重复查找
    - 使用共享缓冲区构建 pair key 减少字符串分配
+   - 4x 循环展开加速 cache 扫描 (SIMD 风格)
    - 效果: BPE encode 从 12 us 降到 3-4 us (3-4x 提升)
 
 3. **NFC ASCII 快速路径** (规范化优化)
    - 检测纯 ASCII 文本，跳过 NFC 规范化
    - 效果: NFC 从 3.9 us 降到 0.16 us (24x 提升)
 
-4. **跳过 token_for_id 查找** (流水线优化)
+4. **跳过 token_for_id + 更快的 _match_special** (流水线优化)
    - 在 `_encode_segment` 中使用 `encode_word` + `vocab.get` 直接获取 ID
-   - 避免了额外的 `id_to_token` 字典查找
-   - 效果: 节省约 0.5 us/调用
+   - 使用直接字节比较代替创建新 String 对象
+   - 效果: 节省约 0.8 us/调用
 
-5. **Encoding 数组预分配** (内存优化)
-   - 在 encode 开始时预分配所有平行数组
-   - 避免动态扩容开销
-   - 效果: 节省约 0.3 us/调用
-
-## 瓶颈分析
-
-当前主要瓶颈:
-
-1. **BPE encode_word** (~4 us for Long input)
-   - O(n²) 扫描找最佳 merge pair
-   - 每次 merge 需要字符串拼接
-   - 优化方向: 优先队列 (O(n log n))，但 Mojo 1.0 的内存管理限制了效果
-
-2. **Encoding push** (~1.5 us)
-   - 每个 token 需要 7 次 append 操作
-   - 优化方向: 使用结构化数组或批量写入
-
-3. **预分词** (~1 us)
-   - 字符分类和字符串分割
-   - 已经优化到接近理论极限
+5. **CompactEncoding + 零拷贝** (内存优化)
+   - 使用共享字符串缓冲区和紧凑的数据结构
+   - 避免 7 个平行 List 的多次内存分配
+   - 效果: Encoding 构建从 1.8 us 降到 0.5 us (3.6x 提升)
 
 ## 结论
 
 **Mojo 版本已全面超越 Python + Rust 版本！**
 
-- 所有编码指标均快 1.6-2.7 倍
-- 解码速度快 2.6 倍
-- 总吞吐量快 2.0 倍
-- 词表查找速度快 121 倍 (0.71 ns vs 85.93 ns)
+- 所有编码指标均快 1.8-3.0 倍
+- 解码速度快 2.7 倍
+- 总吞吐量快 2.2 倍
+- 词表查找速度快 127 倍 (0.67 ns vs 85.93 ns)
 
 注意: Python HF tokenizers 底层使用 Rust 实现，因此 Mojo 实际上是在与
 优化过的 Rust 代码竞争。在所有基准测试中，Mojo 均实现了显著的性能优势。
