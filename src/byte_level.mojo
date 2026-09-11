@@ -183,7 +183,12 @@ struct ByteLevelPreTokenizer(PreTokenizer):
         for token in splits:
             var mapped = String()
             for b in token.bytes():
-                mapped += self.byte_mapping.b2u[Int(b)]
+                var byte_val = Int(b)
+                # Fast path: printable ASCII (0x21-0x7E) maps to itself
+                if byte_val >= 0x21 and byte_val <= 0x7E:
+                    mapped += chr(byte_val)
+                else:
+                    mapped += self.byte_mapping.b2u[byte_val]
             result.append(mapped^)
         return result^
 
@@ -220,14 +225,19 @@ struct ByteLevelDecoder(Decoder):
         var byte_buf = List[Int]()
         for token in tokens:
             for cp in token.codepoints():
-                var c = chr(Int(cp))
-                var opt_b = self.byte_mapping.u2b.get(c)
-                if opt_b:
-                    byte_buf.append(opt_b.value())
+                var cp_val = Int(cp)
+                # Fast path: printable ASCII (0x21-0x7E) maps to itself
+                if cp_val >= 0x21 and cp_val <= 0x7E:
+                    byte_buf.append(cp_val)
                 else:
-                    # Unknown char: use its UTF-8 bytes directly.
-                    for raw in c.bytes():
-                        byte_buf.append(Int(raw))
+                    var c = chr(cp_val)
+                    var opt_b = self.byte_mapping.u2b.get(c)
+                    if opt_b:
+                        byte_buf.append(opt_b.value())
+                    else:
+                        # Unknown char: use its UTF-8 bytes directly.
+                        for raw in c.bytes():
+                            byte_buf.append(Int(raw))
         return _bytes_to_string(byte_buf)
 
     def decode_string(self, s: String) raises -> String:
