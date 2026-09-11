@@ -93,8 +93,20 @@ struct Tokenizer:
         return max_id + 1
 
     def encode(self, text: String) raises -> Encoding:
-        """Encode `text` into an Encoding, splicing in any special tokens."""
+        """Encode `text` into an Encoding, splicing in any special tokens.
+        
+        Performance: pre-allocate arrays based on text length estimate.
+        """
         var enc = Encoding()
+        # Pre-allocate: ~1 token per 4 chars (conservative estimate)
+        var est = text.byte_length() // 3 + 4
+        enc.ids.reserve(est)
+        enc.tokens.reserve(est)
+        enc.offsets.reserve(est)
+        enc.type_ids.reserve(est)
+        enc.attention_mask.reserve(est)
+        enc.special_tokens_mask.reserve(est)
+        enc.sequence_ids.reserve(est)
         if not self.add_special_tokens or len(self.special_tokens) == 0:
             self._encode_segment(enc, text, 0)
             return enc^
@@ -172,7 +184,7 @@ struct Tokenizer:
         self, mut enc: Encoding, text: String, base_offset: Int
     ) raises:
         """Encode a non-special segment of text and append results to enc.
-
+        
         Performance optimization: use encode_word to get token strings directly,
         then look up vocab ids. This avoids the separate token_for_id call.
         """
