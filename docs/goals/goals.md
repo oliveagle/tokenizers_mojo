@@ -171,3 +171,32 @@
 2. [x] WordLevel 编码结果与 HF tokenizers 一致
 3. [x] Unigram 编码结果与 HF tokenizers 一致（Viterbi 算法）
 4. [x] 所有新模型支持 `from_pretrained` 加载
+
+## 7. 性能对比 (Performance Benchmark)
+
+### 7.1 测试结果 (2026-09-11)
+
+| 指标 | Mojo | Python/Rust | 差距 |
+|------|------|-------------|------|
+| Encode (Long, 30-50 chars) | 45.96 us | 11.75 us | 3.9x 慢 |
+| Decode | 32.89 us | 2.85 us | 11.5x 慢 |
+| Vocab Lookup | 0.69 ns | 92.90 ns | **134x 快** |
+| End-to-End Roundtrip | 70.68 us | 7.56 us | 9.3x 慢 |
+
+### 7.2 瓶颈分析
+
+**主要瓶颈**: BPE 编码算法 O(n² × m) 复杂度 + 频繁 String 分配
+
+**优势**: Mojo Dict 词表查找极快 (比 Python 快 134 倍)
+
+### 7.3 优化路线图
+
+- **Phase A**: BPE 算法重构 (Min-Heap + 链表) → 预计提升 4-6x
+- **Phase B**: 内存优化 (Arena allocator) → 预计提升 1.5-2x
+- **Phase C**: SIMD 优化 → 预计提升 1.2-1.5x
+
+### 7.4 目标性能
+
+- Encode (Long): 45.96 us → **<12 us** (Phase A+B)
+- End-to-End: 70.68 us → **<18 us** (Phase A+B)
+- 相对 HF Rust: 3.9x 慢 → **1.0x** (Phase A+B)
