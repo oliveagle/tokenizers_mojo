@@ -92,8 +92,8 @@ struct BPE(Model):
         Each initial symbol is one unicode character (byte-level mapping).
         Iteratively find the pair with the lowest merge rank and merge it.
         
-        Performance optimization: maintain a cache of pair ranks to avoid
-        repeated string allocation for pair lookups during merge.
+        Performance optimization: use a shared buffer for pair key construction
+        to reduce string allocation during the merge loop.
         """
         var parts = List[String]()
         for cp in word.codepoints():
@@ -104,15 +104,21 @@ struct BPE(Model):
         var capacity = len(parts)
         var n = capacity
         
-        # Cache: for each index i, cache[i] = rank of pair (parts[i], parts[i+1])
+        # Cache pair ranks to avoid repeated dict lookups
         var cache = List[Int]()
         for _ in range(capacity):
             cache.append(-1)
         
+        # Shared buffer for building pair keys (avoids repeated allocation)
+        var buf = String()
+        
         # Initialize cache with all adjacent pair ranks
         for i in range(n - 1):
-            var key = parts[i] + " " + parts[i + 1]
-            cache[i] = self.merges.get(key, -1)
+            buf = String()
+            buf += parts[i]
+            buf += " "
+            buf += parts[i + 1]
+            cache[i] = self.merges.get(buf, -1)
         
         # Greedy merge loop
         while n > 1:
@@ -130,10 +136,10 @@ struct BPE(Model):
                 break
             
             # Merge the pair
-            var merged = String()
-            merged += parts[best_idx]
-            merged += parts[best_idx + 1]
-            parts[best_idx] = merged
+            buf = String()
+            buf += parts[best_idx]
+            buf += parts[best_idx + 1]
+            parts[best_idx] = buf
             
             # Shift parts left
             for i in range(best_idx + 1, n - 1):
@@ -146,13 +152,17 @@ struct BPE(Model):
             
             # Update cache for affected pairs (only 2 pairs changed)
             if best_idx > 0:
-                # Re-compute pair (parts[best_idx-1], parts[best_idx])
-                var key = parts[best_idx - 1] + " " + parts[best_idx]
-                cache[best_idx - 1] = self.merges.get(key, -1)
+                buf = String()
+                buf += parts[best_idx - 1]
+                buf += " "
+                buf += parts[best_idx]
+                cache[best_idx - 1] = self.merges.get(buf, -1)
             if best_idx < n - 1:
-                # Re-compute pair (parts[best_idx], parts[best_idx+1])
-                var key = parts[best_idx] + " " + parts[best_idx + 1]
-                cache[best_idx] = self.merges.get(key, -1)
+                buf = String()
+                buf += parts[best_idx]
+                buf += " "
+                buf += parts[best_idx + 1]
+                cache[best_idx] = self.merges.get(buf, -1)
         
         # Return only the valid portion
         var result = List[String]()

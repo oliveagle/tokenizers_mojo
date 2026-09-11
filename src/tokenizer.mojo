@@ -162,21 +162,21 @@ struct Tokenizer:
     ) raises:
         """Encode a non-special segment of text and append results to enc.
 
-        When the segment is empty but add_prefix_space is active, the
-        pre-tokenizer still emits the byte-mapped space token (matching
-        upstream GPT-2 behaviour for empty input).
+        Performance optimization: use encode_word to get token strings directly,
+        then look up vocab ids. This avoids the separate token_for_id call.
         """
         var norm = self.normalizer.normalize(text)
         var pretokens = self.pre_tokenizer.pre_tokenize(norm)
         var char_idx = base_offset
         for ptok in pretokens:
-            var ids = self.model.encode(ptok)
+            var toks = self.model.encode_word(ptok)
             var start = char_idx
             var end = char_idx + self._original_char_len(ptok)
             char_idx = end
-            for id in ids:
-                var token_str = self.model.token_for_id(id)
-                enc.push(id, token_str, Tuple[Int, Int](start, end))
+            for t in toks:
+                var id = self.model.vocab.get(t)
+                if id:
+                    enc.push(id.value(), t, Tuple[Int, Int](start, end))
 
     def _original_char_len(self, byte_mapped: String) -> Int:
         """Approximate original char length of a byte-mapped token.
