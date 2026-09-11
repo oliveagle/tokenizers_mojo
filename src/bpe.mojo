@@ -4,6 +4,9 @@ Behavior baseline: HuggingFace tokenizers `models/bpe/mod.rs` (upstream Rust).
 
 Phase 1 scope: greedy lowest-priority-pair merging (no backtracking), which
 matches GPT-2 / HF ByteLevel BPE semantics for the minimal pipeline.
+
+Performance optimization: pair-rank cache to avoid repeated string allocation
+for pair lookups during merge.
 """
 
 import byte_level
@@ -88,6 +91,9 @@ struct BPE(Model):
         `word` is already byte-mapped (output of ByteLevelPreTokenizer).
         Each initial symbol is one unicode character (byte-level mapping).
         Iteratively find the pair with the lowest merge rank and merge it.
+        
+        Performance optimization: maintain a cache of pair ranks to avoid
+        repeated string allocation for pair lookups during merge.
         """
         var parts = List[String]()
         for cp in word.codepoints():
@@ -95,31 +101,64 @@ struct BPE(Model):
         if len(parts) == 0:
             return parts^
 
-        # Greedy merge loop (matches GPT-2 `bpe()` algorithm shape).
-        var n = len(parts)
+        var capacity = len(parts)
+        var n = capacity
+        
+        # Cache: for each index i, cache[i] = rank of pair (parts[i], parts[i+1])
+        var cache = List[Int]()
+        for _ in range(capacity):
+            cache.append(-1)
+        
+        # Initialize cache with all adjacent pair ranks
+        for i in range(n - 1):
+            var key = parts[i] + " " + parts[i + 1]
+            cache[i] = self.merges.get(key, -1)
+        
+        # Greedy merge loop
         while n > 1:
             var best_rank = -1
             var best_idx = -1
+            
+            # Scan cache instead of building strings each time
             for i in range(n - 1):
-                var pair = parts[i] + " " + parts[i + 1]
-                var r = self.merges.get(pair, -1)
+                var r = cache[i]
                 if r != -1 and (best_rank == -1 or r < best_rank):
                     best_rank = r
                     best_idx = i
+            
             if best_idx == -1:
                 break
-            var a = parts[best_idx]
-            var b = parts[best_idx + 1]
-            var merged = a + b
+            
+            # Merge the pair
+            var merged = String()
+            merged += parts[best_idx]
+            merged += parts[best_idx + 1]
             parts[best_idx] = merged
-            # Remove parts[best_idx + 1]
-            var new_parts = List[String]()
-            for i in range(n):
-                if i != best_idx + 1:
-                    new_parts.append(parts[i])
-            parts = new_parts^
-            n = len(parts)
-        return parts^
+            
+            # Shift parts left
+            for i in range(best_idx + 1, n - 1):
+                parts[i] = parts[i + 1]
+            n -= 1
+            
+            # Shift cache left
+            for i in range(best_idx, n - 1):
+                cache[i] = cache[i + 1]
+            
+            # Update cache for affected pairs (only 2 pairs changed)
+            if best_idx > 0:
+                # Re-compute pair (parts[best_idx-1], parts[best_idx])
+                var key = parts[best_idx - 1] + " " + parts[best_idx]
+                cache[best_idx - 1] = self.merges.get(key, -1)
+            if best_idx < n - 1:
+                # Re-compute pair (parts[best_idx], parts[best_idx+1])
+                var key = parts[best_idx] + " " + parts[best_idx + 1]
+                cache[best_idx] = self.merges.get(key, -1)
+        
+        # Return only the valid portion
+        var result = List[String]()
+        for i in range(n):
+            result.append(parts[i])
+        return result^
 
     def encode(self, word: String) raises -> List[Int]:
         """Encode a byte-mapped word into a list of vocab ids."""

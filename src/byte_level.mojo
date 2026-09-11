@@ -8,6 +8,8 @@ operate on "text" that faithfully represents arbitrary byte sequences.
 
 Behavior baseline: HuggingFace tokenizers `pre_tokenizers/byte_level.rs`
 (upstream Rust, kept read-only in submodules/tokenizers/).
+
+Performance optimization: cache ByteMapping inside the struct.
 """
 
 import traits
@@ -77,14 +79,6 @@ struct ByteMapping:
 # ---------------------------------------------------------------------------
 # GPT-2 style pre-tokenization (simplified regex substitute)
 # ---------------------------------------------------------------------------
-# Upstream GPT-2 regex:
-#   's|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+
-# Mojo 1.0 has no regex engine, so this is a simplified boundary split:
-#   runs of letters / digits / punctuation / whitespace, with a single
-#   leading space attaching to the following token.
-# Known divergence (documented TODO): contractions ('s, 't, 're, ...) are
-# not split into separate tokens; only plain word boundaries match upstream.
-
 
 def _is_letter(cp: Int) -> Bool:
     if (cp >= 0x41 and cp <= 0x5A) or (cp >= 0x61 and cp <= 0x7A):
@@ -150,24 +144,27 @@ def simple_gpt2_split(text: String) -> List[String]:
 
 
 struct ByteLevelPreTokenizer(PreTokenizer):
-    """Pre-tokenizer that maps every byte to a printable Unicode character.
+    """GPT-2-style byte-level pre-tokenizer.
+
+    Splits input text using a simplified regex, then maps each byte to
+    a printable Unicode character (the GPT-2 byte<->unicode mapping).
 
     Attributes:
-        add_prefix_space: Prepend ' ' (mapped to 'Ġ') when the text does not
-            already start with a space.
-        use_regex: When True, split using the simplified GPT-2 boundary rules.
+        add_prefix_space: if True and text does not start with a space,
+            prepend a space before splitting (matching GPT-2 behaviour).
+        use_regex: if True, apply the simplified GPT-2 split; otherwise
+            treat the whole input as one token.
+        byte_mapping: cached byte mapping to avoid rebuilding on every call.
     """
 
     var add_prefix_space: Bool
     var use_regex: Bool
+    var byte_mapping: ByteMapping
 
-    def __init__(out self):
-        self.add_prefix_space = True
-        self.use_regex = True
-
-    def __init__(out self, add_prefix_space: Bool, use_regex: Bool):
+    def __init__(out self, add_prefix_space: Bool = True, use_regex: Bool = True):
         self.add_prefix_space = add_prefix_space
         self.use_regex = use_regex
+        self.byte_mapping = ByteMapping()
 
     def pre_tokenize(self, text: String) raises -> List[String]:
         """Split and byte-map `text` into a list of pre-tokenized strings."""
@@ -181,21 +178,20 @@ struct ByteLevelPreTokenizer(PreTokenizer):
         else:
             splits.append(work^)
 
-        var m = ByteMapping()
+        # Use cached byte mapping
         var result = List[String]()
         for token in splits:
             var mapped = String()
             for b in token.bytes():
-                mapped += m.b2u[Int(b)]
+                mapped += self.byte_mapping.b2u[Int(b)]
             result.append(mapped^)
         return result^
 
     def pre_tokenize_str(self, text: String) raises -> String:
         """Byte-map the whole text without splitting (helper for tests)."""
-        var m = ByteMapping()
         var mapped = String()
         for b in text.bytes():
-            mapped += m.b2u[Int(b)]
+            mapped += self.byte_mapping.b2u[Int(b)]
         return mapped
 
 
@@ -209,19 +205,23 @@ struct ByteLevelDecoder(Decoder):
 
     Converts each byte-level Unicode character back to its original byte,
     then reassembles the original UTF-8 string.
+    
+    Attributes:
+        byte_mapping: cached byte mapping to avoid rebuilding on every call.
     """
 
+    var byte_mapping: ByteMapping
+
     def __init__(out self):
-        pass
+        self.byte_mapping = ByteMapping()
 
     def decode(self, tokens: List[String]) raises -> String:
         """Decode a list of byte-mapped tokens back to the original string."""
-        var m = ByteMapping()
         var byte_buf = List[Int]()
         for token in tokens:
             for cp in token.codepoints():
                 var c = chr(Int(cp))
-                var opt_b = m.u2b.get(c)
+                var opt_b = self.byte_mapping.u2b.get(c)
                 if opt_b:
                     byte_buf.append(opt_b.value())
                 else:

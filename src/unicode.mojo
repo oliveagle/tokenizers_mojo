@@ -34,6 +34,15 @@ def _binary_search(keys: List[Int], target: Int) -> Int:
     return -1
 
 
+
+
+def _is_all_ascii(s: String) -> Bool:
+    """Check if all codepoints in string are ASCII (0x00-0x7F)."""
+    for cp in s.codepoints():
+        if Int(cp) >= 0x80:
+            return False
+    return True
+
 def _ccc(cp: Int, ccc_keys: List[Int], ccc_values: List[Int]) -> Int:
     """Canonical Combining Class of `cp` (0 when not stored)."""
     var idx = _binary_search(ccc_keys, cp)
@@ -260,6 +269,9 @@ struct UnicodeData:
         return self._decompose(s, True)
 
     def nfc(self, s: String) raises -> String:
+        # Fast path: ASCII-only text needs no normalization
+        if _is_all_ascii(s):
+            return s
         var d = self._decompose(s, False)
         return self._compose(d, False)
 
