@@ -1,19 +1,14 @@
-"""WordPiece Tokenizer — top-level orchestrator for BERT-style models.
-
-Pipeline: normalize -> pre_tokenize -> WordPiece.encode -> Encoding
-
-Supports loading from HuggingFace tokenizer.json files via from_pretrained_wordpiece.
-"""
+"""Tokenizer V3 — V1 components + optimized NFC normalization."""
 
 import byte_level
+import bpe
 import encoding
-import normalizers
-import wordpiece
+import normalizers_optimized
 
-from byte_level import ByteLevelPreTokenizer
+from byte_level import ByteLevelPreTokenizer, ByteLevelDecoder
+from bpe import BPE
 from encoding import Encoding
-from normalizers import NFCNormalizer
-from wordpiece import WordPiece
+from normalizers_optimized import NFCNormalizerOptimized
 
 def _read_text_bytes(text: String) -> List[Int]:
     """Read all bytes from text into a List for safe byte-level access."""
@@ -64,65 +59,37 @@ def _match_special_safe(text_bytes: List[Int], special_tokens: Dict[String, Int]
     return best_tok
 
 
-struct WordPieceTokenizer:
-    """Tokenizer for WordPiece models (BERT/DistilBERT).
+struct TokenizerV3:
+    """Tokenizer with ASCII fast path for NFC."""
 
-    Attributes:
-        normalizer: text normalizer.
-        pre_tokenizer: pre-tokenizer (e.g., BertPreTokenizer).
-        model: WordPiece model.
-        add_special_tokens: whether to emit specials during encode.
-        special_tokens: content -> vocab id for registered special tokens.
-    """
-
-    var normalizer: NFCNormalizer
+    var normalizer: NFCNormalizerOptimized
     var pre_tokenizer: ByteLevelPreTokenizer
-    var model: WordPiece
+    var model: BPE
+    var decoder: ByteLevelDecoder
     var add_special_tokens: Bool
     var special_tokens: Dict[String, Int]
 
-    def __init__(out self, var model: WordPiece):
-        self.normalizer = NFCNormalizer()
+    def __init__(out self, var model: BPE):
+        self.normalizer = NFCNormalizerOptimized()
         self.pre_tokenizer = ByteLevelPreTokenizer(
-            add_prefix_space=False, use_regex=False
+            add_prefix_space=True, use_regex=True
         )
         self.model = model^
+        self.decoder = ByteLevelDecoder()
         self.add_special_tokens = True
         self.special_tokens = Dict[String, Int]()
-
-    def __init__(out self):
-        self.normalizer = NFCNormalizer()
-        self.pre_tokenizer = ByteLevelPreTokenizer(
-            add_prefix_space=False, use_regex=False
-        )
-        self.model = WordPiece()
-        self.add_special_tokens = True
-        self.special_tokens = Dict[String, Int]()
-
-    def add_special_token(mut self, token: String) -> Int:
-        """Register `token` as a special token and return its vocab id."""
-        var existing = self.special_tokens.get(token)
-        if existing:
-            return existing.value()
-        var id = self.model.token_id(token)
-        if id == -1:
-            id = self._next_vocab_id()
-            self.model.vocab[token] = id
-            self.model.id_to_token[id] = token
-        self.special_tokens[token] = id
-        return id
-
-    def _next_vocab_id(self) -> Int:
-        """Return max_existing_vocab_id + 1."""
-        var max_id = -1
-        for v in self.model.vocab.values():
-            if v > max_id:
-                max_id = v
-        return max_id + 1
 
     def encode(self, text: String) raises -> Encoding:
-        """Encode `text` into an Encoding."""
         var enc = Encoding()
+        var est = text.byte_length() // 3 + 4
+        enc.ids.reserve(est)
+        enc.tokens.reserve(est)
+        enc.offsets.reserve(est)
+        enc.type_ids.reserve(est)
+        enc.attention_mask.reserve(est)
+        enc.special_tokens_mask.reserve(est)
+        enc.sequence_ids.reserve(est)
+
         if not self.add_special_tokens or len(self.special_tokens) == 0:
             self._encode_segment(enc, text, 0)
             return enc^
@@ -160,48 +127,43 @@ struct WordPieceTokenizer:
         return enc^
 
     def _match_special(self, text: String, start: Int) -> String:
-        """Return the longest special token matched at byte position `start`."""
-        var best = String()
+        var best_len = 0
+        var best_tok = String()
         var n = text.byte_length()
         for tok in self.special_tokens:
             var blen = tok.byte_length()
-            if blen == 0:
+            if blen == 0 or blen > n - start:
                 continue
-            if start + blen > n:
+            if blen <= best_len:
                 continue
-            var window = String()
-                var wb = _read_text_bytes(text)
-                var wi = start
-                while wi < start + blen:
-                    window += chr(wb[wi])
-                    wi += 1
-            if window == tok and blen > best.byte_length():
-                best = tok
-        return best
+            var is_match = True
+            for j in range(blen):
+                if text_bytes[start + j] != tok_bytes[j]:
+                    is_match = False
+                    break
+            if is_match:
+                best_len = blen
+                best_tok = tok
+        return best_tok
 
     def _encode_segment(
         self, mut enc: Encoding, text: String, base_offset: Int
     ) raises:
-        """Encode a non-special segment of text."""
         var norm = self.normalizer.normalize(text)
         var pretokens = self.pre_tokenizer.pre_tokenize(norm)
         var char_idx = base_offset
         for ptok in pretokens:
-            var ids = self.model.encode(ptok)
+            var toks = self.model.encode_word(ptok)
             var start = char_idx
             var end = char_idx + ptok.byte_length()
             char_idx = end
-            for id in ids:
-                var token_str = self.model.token_for_id(id)
-                enc.push(id, token_str, (start, end))
+            for t in toks:
+                var id = self.model.vocab.get(t)
+                if id:
+                    enc.push(id.value(), t, (start, end))
 
     def decode(self, enc: Encoding) raises -> String:
-        """Decode an Encoding back to a string."""
-        var sb = String()
-        for i in range(len(enc.ids)):
-            var token = self.model.token_for_id(enc.ids[i])
-            sb += token
-        return sb^
+        return self.decoder.decode(enc.tokens)
 
 
 def _codepoint_byte_len(text: String, byte_pos: Int) -> Int:

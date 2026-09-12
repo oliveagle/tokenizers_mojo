@@ -18,6 +18,15 @@ import traits
 from traits import PreTokenizer
 from regex import regex_find_all
 
+def _read_text_bytes(text: String) -> List[Int]:
+    """Read all bytes from text into a List for safe byte-level access."""
+    var result = List[Int]()
+    result.reserve(text.byte_length())
+    for b in text.bytes():
+        result.append(Int(b))
+    return result^
+
+
 
 struct SplitPreTokenizer(PreTokenizer):
     """Split on a literal separator with a configurable behavior.
@@ -44,16 +53,33 @@ struct SplitPreTokenizer(PreTokenizer):
         var n = text.byte_length()
         var sep = self.separator
         var sep_len = sep.byte_length()
+        
+        # Pre-read bytes for safe byte-level access
+        var text_bytes = List[Int]()
+        text_bytes.reserve(n)
+        for b in text.bytes():
+            text_bytes.append(Int(b))
 
         if sep_len == 0 or n == 0:
             tokens.append(text)
             return tokens^
 
+        # Pre-read separator bytes
+        var sep_bytes = List[Int]()
+        for b in sep.bytes():
+            sep_bytes.append(Int(b))
+
         # locate every separator occurrence: [start, end) byte ranges
         var seps = List[Tuple[Int, Int]]()
         var i = 0
         while i <= n - sep_len:
-            if String(text[byte = i : i + sep_len]) == sep:
+            # Compare bytes directly
+            var is_match = True
+            for j in range(sep_len):
+                if text_bytes[i + j] != sep_bytes[j]:
+                    is_match = False
+                    break
+            if is_match:
                 seps.append(Tuple[Int, Int](i, i + sep_len))
                 i += sep_len
             else:
@@ -65,36 +91,64 @@ struct SplitPreTokenizer(PreTokenizer):
 
         if self.invert:
             for s in seps:
-                tokens.append(String(text[byte = s[0] : s[1]]))
+                var seg = String()
+                var si = s[0]
+                while si < s[1]:
+                    seg += chr(text_bytes[si])
+                    si += 1
+                tokens.append(seg)
             return tokens^
 
         if self.behavior == "removed" or self.behavior == "isolated":
             var prev_end = 0
             for s in seps:
                 if s[0] > prev_end:
-                    tokens.append(String(text[byte = prev_end : s[0]]))
+                    var seg = String()
+                    var sj = prev_end
+                    while sj < s[0]:
+                        seg += chr(text_bytes[sj])
+                        sj += 1
+                    tokens.append(seg)
                 if self.behavior == "isolated":
                     tokens.append(sep)
                 prev_end = s[1]
             if prev_end < n:
-                tokens.append(String(text[byte=prev_end:n]))
+                var seg = String()
+                var sj = prev_end
+                while sj < n:
+                    seg += chr(text_bytes[sj])
+                    sj += 1
+                tokens.append(seg)
             return tokens^
 
         if self.behavior == "merged_with_previous":
             var prev_end = 0
             for s in seps:
-                var piece = String(text[byte = prev_end : s[0]])
+                var piece = String()
+                var pi = prev_end
+                while pi < s[0]:
+                    piece += chr(text_bytes[pi])
+                    pi += 1
                 if piece.byte_length() > 0:
                     tokens.append(piece + sep)
                 else:
                     tokens.append(sep)
                 prev_end = s[1]
             if prev_end < n:
-                tokens.append(String(text[byte=prev_end:n]))
+                var seg = String()
+                var sj = prev_end
+                while sj < n:
+                    seg += chr(text_bytes[sj])
+                    sj += 1
+                tokens.append(seg)
             return tokens^
 
         # merged_with_next
-        var first = String(text[byte = 0 : seps[0][0]])
+        var first = String()
+        var fi = 0
+        while fi < seps[0][0]:
+            first += chr(text_bytes[fi])
+            fi += 1
         if first.byte_length() > 0:
             tokens.append(first)
         for idx in range(len(seps)):
@@ -103,7 +157,11 @@ struct SplitPreTokenizer(PreTokenizer):
             var next_end = n
             if idx + 1 < len(seps):
                 next_end = seps[idx + 1][0]
-            var next_piece = String(text[byte=next_start:next_end])
+            var next_piece = String()
+            var ni = next_start
+            while ni < next_end:
+                next_piece += chr(text_bytes[ni])
+                ni += 1
             if next_piece.byte_length() > 0:
                 tokens.append(sep + next_piece)
             else:
@@ -152,37 +210,74 @@ struct RegexSplitPreTokenizer(PreTokenizer):
 
         if self.invert:
             for m in matches:
-                tokens.append(String(text[byte=m[0]:m[1]]))
+                var seg = String()
+        var mi = m[0]
+        while mi < m[1]:
+            seg += chr(text_bytes[mi])
+            mi += 1
+        tokens.append(seg)
             return tokens^
 
         if self.behavior == "removed" or self.behavior == "isolated":
             var prev_end = 0
             for m in matches:
                 if m[0] > prev_end:
-                    tokens.append(String(text[byte=prev_end:m[0]]))
+                    var seg = String()
+                var pi = prev_end
+                while pi < m[0]:
+                    seg += chr(text_bytes[pi])
+                    pi += 1
+                tokens.append(seg)
                 if self.behavior == "isolated":
-                    tokens.append(String(text[byte=m[0]:m[1]]))
+                    var seg = String()
+        var mi = m[0]
+        while mi < m[1]:
+            seg += chr(text_bytes[mi])
+            mi += 1
+        tokens.append(seg)
                 prev_end = m[1]
             if prev_end < n:
-                tokens.append(String(text[byte=prev_end:n]))
+                var seg = String()
+            var sj = prev_end
+            while sj < n:
+                seg += chr(text_bytes[sj])
+                sj += 1
+            tokens.append(seg)
             return tokens^
 
         if self.behavior == "merged_with_previous":
             var prev_end = 0
             for m in matches:
-                var piece = String(text[byte=prev_end:m[0]])
-                var delim = String(text[byte=m[0]:m[1]])
+                var piece = String()
+                var pi = prev_end
+                while pi < m[0]:
+                    piece += chr(text_bytes[pi])
+                    pi += 1
+                var delim = String()
+                var di = m[0]
+                while di < m[1]:
+                    delim += chr(text_bytes[di])
+                    di += 1
                 if piece.byte_length() > 0:
                     tokens.append(piece + delim)
                 else:
                     tokens.append(delim)
                 prev_end = m[1]
             if prev_end < n:
-                tokens.append(String(text[byte=prev_end:n]))
+                var seg = String()
+            var sj = prev_end
+            while sj < n:
+                seg += chr(text_bytes[sj])
+                sj += 1
+            tokens.append(seg)
             return tokens^
 
         # merged_with_next
-        var first = String(text[byte=0:matches[0][0]])
+        var first = String()
+        var fi = 0
+        while fi < matches[0][0]:
+            first += chr(text_bytes[fi])
+            fi += 1
         if first.byte_length() > 0:
             tokens.append(first)
         for idx in range(len(matches)):
@@ -191,8 +286,16 @@ struct RegexSplitPreTokenizer(PreTokenizer):
             var next_end = n
             if idx + 1 < len(matches):
                 next_end = matches[idx + 1][0]
-            var next_piece = String(text[byte=next_start:next_end])
-            var delim = String(text[byte=m[0]:m[1]])
+            var next_piece = String()
+            var ni = next_start
+            while ni < next_end:
+                next_piece += chr(text_bytes[ni])
+                ni += 1
+            var delim = String()
+                var di = m[0]
+                while di < m[1]:
+                    delim += chr(text_bytes[di])
+                    di += 1
             if next_piece.byte_length() > 0:
                 tokens.append(delim + next_piece)
             else:

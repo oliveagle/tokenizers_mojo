@@ -17,6 +17,15 @@ import whitespace
 from whitespace import is_word_char, is_whitespace, is_digit
 
 # ---------------------------------------------------------------------------
+def _read_text_bytes(text: String) -> List[Int]:
+    """Read all bytes from text into a List for safe byte-level access."""
+    var result = List[Int]()
+    result.reserve(text.byte_length())
+    for b in text.bytes():
+        result.append(Int(b))
+    return result^
+
+
 # Bytecode opcodes
 # ---------------------------------------------------------------------------
 
@@ -462,11 +471,52 @@ struct Regex:
 
 
 def _codepoint_at(text: String, byte_pos: Int) raises -> Int:
+    """Read codepoint at byte_pos using .bytes() iteration for safety."""
     if byte_pos >= text.byte_length():
         return -1
-    for c in text[byte=byte_pos:]:
-        return ord(c)
-    return -1
+    var byte_val = 0
+    var idx = 0
+    for b in text.bytes():
+        if idx == byte_pos:
+            byte_val = Int(b)
+            break
+        idx += 1
+    # Decode UTF-8 codepoint
+    if byte_val < 0x80:
+        return byte_val
+    elif byte_val < 0xE0:
+        # 2-byte sequence
+        var cp = byte_val & 0x1F
+        for b in text.bytes():
+            if idx == byte_pos + 1:
+                cp = (cp << 6) | (Int(b) & 0x3F)
+                break
+            idx += 1
+        return cp
+    elif byte_val < 0xF0:
+        # 3-byte sequence
+        var cp = byte_val & 0x0F
+        var count = 0
+        for b in text.bytes():
+            if idx > byte_pos and count < 2:
+                cp = (cp << 6) | (Int(b) & 0x3F)
+                count += 1
+            idx += 1
+            if count >= 2:
+                break
+        return cp
+    else:
+        # 4-byte sequence
+        var cp = byte_val & 0x07
+        var count = 0
+        for b in text.bytes():
+            if idx > byte_pos and count < 3:
+                cp = (cp << 6) | (Int(b) & 0x3F)
+                count += 1
+            idx += 1
+            if count >= 3:
+                break
+        return cp
 
 
 def _next_byte(text: String, byte_pos: Int) raises -> Int:
@@ -568,10 +618,21 @@ def regex_split(pattern: String, text: String) raises -> List[String]:
     var matches = regex_find_all(pattern, text)
     var out = List[String]()
     var prev = 0
+    var text_bytes = _read_text_bytes(text)
     for m in matches:
         if m[0] > prev:
-            out.append(String(text[byte=prev:m[0]]))
+            var seg = String()
+            var j = prev
+            while j < m[0]:
+                seg += chr(text_bytes[j])
+                j += 1
+            out.append(seg)
         prev = m[1]
-    if prev < text.byte_length():
-        out.append(String(text[byte=prev:]))
+    if prev < len(text_bytes):
+        var seg = String()
+        var j = prev
+        while j < len(text_bytes):
+            seg += chr(text_bytes[j])
+            j += 1
+        out.append(seg)
     return out^

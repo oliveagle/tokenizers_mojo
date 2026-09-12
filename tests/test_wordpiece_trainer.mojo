@@ -49,7 +49,7 @@ def test_limit_alphabet() raises:
     word_counts["eee"] = 1
     
     var model = WordPiece()
-    trainer.train(model, word_counts)
+    _ = trainer.train(model, word_counts)
     
     # Should have initial characters limited to 3 (a, b, c)
     # Plus merged tokens from training
@@ -74,7 +74,7 @@ def test_min_frequency() raises:
     word_counts["rare"] = 2  # Below min_frequency
     
     var model = WordPiece()
-    trainer.train(model, word_counts)
+    _ = trainer.train(model, word_counts)
     
     expect(model.token_id("frequent") >= 0, "frequent should be in vocab")
     # rare should not be in vocab (below min_frequency)
@@ -106,7 +106,7 @@ def test_encode_after_training() raises:
     word_counts["##l"] = 12
     
     var model = WordPiece()
-    trainer.train(model, word_counts)
+    _ = trainer.train(model, word_counts)
     
     # Try encoding a word
     var ids = model.encode("hello")
@@ -128,7 +128,7 @@ def test_merges_produce_longer_tokens() raises:
     word_counts["cd"] = 50
     
     var model = WordPiece()
-    trainer.train(model, word_counts)
+    _ = trainer.train(model, word_counts)
     
     # Should have merged tokens like "ab" or "##b"
     var has_merged = False

@@ -22,7 +22,6 @@ def log(x: Float64) -> Float64:
     # Use the identity: ln(x) = 2 * atanh((x-1)/(x+1))
     # Or simpler: use the built-in if available, otherwise approximate
     # For now, use a simple approximation
-    var result: Float64 = 0.0
     var y = x
     # Normalize to [1, 2) range
     var k: Float64 = 0.0
@@ -35,7 +34,7 @@ def log(x: Float64) -> Float64:
     # Now y is in [1, 2), use polynomial approximation
     var z = (y - 1.0) / (y + 1.0)
     var z2 = z * z
-    result = 2.0 * z * (1.0 + z2 / 3.0 + z2 * z2 / 5.0 + z2 * z2 * z2 / 7.0)
+    var result = 2.0 * z * (1.0 + z2 / 3.0 + z2 * z2 / 5.0 + z2 * z2 * z2 / 7.0)
     return result + k * 0.6931471805599453  # ln(2)
 
 

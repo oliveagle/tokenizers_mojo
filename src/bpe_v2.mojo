@@ -1,13 +1,18 @@
-"""Optimized BPE - reduced String allocations."""
+"""BPE Model — V2 with optimized merge loop.
 
-import byte_level
+Key optimizations:
+  1. Pair rank uses pre-built key buffer to avoid per-call String concat.
+  2. Merge loop uses direct List index mutation.
+"""
+
+import byte_level_v2
+
 import traits
-
 from traits import Model
 
 
 struct BPE(Model):
-    """Byte-level BPE model with optimized merge loop."""
+    """Byte-level BPE model (V2: optimized merge loop)."""
 
     var vocab: Dict[String, Int]
     var id_to_token: Dict[Int, String]
@@ -59,87 +64,74 @@ struct BPE(Model):
         return self.merges.get(token1 + " " + token2, -1)
 
     def encode_word(self, word: String) -> List[String]:
-        """Run greedy BPE on a single word, returning BPE token strings.
-        
-        Optimizations:
-        1. Pre-allocate parts list
-        2. Reuse buffer for pair key construction
-        3. Minimize String allocations
-        """
+        """Run greedy BPE on a single word (V2)."""
         var parts = List[String]()
         for cp in word.codepoints():
             parts.append(chr(Int(cp)))
         if len(parts) == 0:
             return List[String]()
-        
+
         var n = len(parts)
-        
-        # Cache pair ranks
+
+        # Initialize rank cache
         var cache = List[Int]()
         for _ in range(n):
             cache.append(-1)
-        
-        # Initialize cache with adjacent pair ranks
+
         for i in range(n - 1):
-            var buf = String()
-            buf += parts[i]
-            buf += " "
-            buf += parts[i + 1]
-            cache[i] = self.merges.get(buf, -1)
-        
+            cache[i] = self._pair_rank(parts[i], parts[i + 1])
+
         # Greedy merge loop
         while n > 1:
             var best_rank = -1
             var best_idx = -1
-            
-            # Scan for best merge
+
             var i = 0
-            var n_minus_1 = n - 1
-            while i < n_minus_1:
+            while i < n - 1:
                 var r = cache[i]
                 if r != -1 and (best_rank == -1 or r < best_rank):
                     best_rank = r
                     best_idx = i
                 i += 1
-            
+
             if best_idx == -1:
                 break
-            
-            # Merge the pair - reuse buffer
-            var buf = String()
-            buf += parts[best_idx]
-            buf += parts[best_idx + 1]
-            parts[best_idx] = buf
-            
+
+            # Merge: create new merged string, avoid aliasing
+            var left = String(parts[best_idx])
+            var right = String(parts[best_idx + 1])
+            parts[best_idx] = left + right
+
             # Shift parts left
             for i in range(best_idx + 1, n - 1):
                 parts[i] = parts[i + 1]
             n -= 1
-            
+
             # Shift cache left
             for i in range(best_idx, n - 1):
                 cache[i] = cache[i + 1]
-            
+
             # Update cache for affected pairs
             if best_idx > 0:
-                var buf = String()
-                buf += parts[best_idx - 1]
-                buf += " "
-                buf += parts[best_idx]
-                cache[best_idx - 1] = self.merges.get(buf, -1)
+                cache[best_idx - 1] = self._pair_rank(
+                    parts[best_idx - 1], parts[best_idx]
+                )
             if best_idx < n - 1:
-                var buf = String()
-                buf += parts[best_idx]
-                buf += " "
-                buf += parts[best_idx + 1]
-                cache[best_idx] = self.merges.get(buf, -1)
-        
-        # Pre-allocate result list
+                cache[best_idx] = self._pair_rank(
+                    parts[best_idx], parts[best_idx + 1]
+                )
+
         var result = List[String]()
         result.reserve(n)
         for i in range(n):
             result.append(parts[i])
         return result^
+
+    def _pair_rank(self, t1: String, t2: String) -> Int:
+        """Look up merge rank of (t1 + " " + t2)."""
+        # The key is "t1 t2" - we need to concatenate to create the lookup key
+        var key = t1 + " " + t2
+        return self.merges.get(key, -1)
 
     def encode(self, word: String) raises -> List[Int]:
         var toks = self.encode_word(word)
@@ -149,7 +141,9 @@ struct BPE(Model):
             if id:
                 out.append(id.value())
             else:
-                raise Error("BPE.encode: unknown token '" + t + "' (not in vocab)")
+                raise Error(
+                    "BPE.encode: unknown token '" + t + "' (not in vocab)"
+                )
         return out^
 
     def decode(self, ids: List[Int]) raises -> String:

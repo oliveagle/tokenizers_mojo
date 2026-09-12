@@ -15,6 +15,54 @@ from encoding import Encoding
 from normalizers import NFCNormalizer
 from wordlevel import WordLevel
 
+def _read_text_bytes(text: String) -> List[Int]:
+    """Read all bytes from text into a List for safe byte-level access."""
+    var result = List[Int]()
+    result.reserve(text.byte_length())
+    for b in text.bytes():
+        result.append(Int(b))
+    return result^
+
+
+def _codepoint_byte_len_safe(text_bytes: List[Int], byte_pos: Int) -> Int:
+    """Length (in bytes) of the codepoint at byte_pos, using pre-read byte list."""
+    if byte_pos >= len(text_bytes):
+        return 0
+    var first = text_bytes[byte_pos]
+    if first < 0x80:
+        return 1
+    if first < 0xE0:
+        return 2
+    if first < 0xF0:
+        return 3
+    return 4
+
+
+def _match_special_safe(text_bytes: List[Int], special_tokens: Dict[String, Int], start: Int) -> String:
+    """Match special tokens using pre-read byte list for safe access."""
+    var best_len = 0
+    var best_tok = String()
+    var n = len(text_bytes)
+    for tok in special_tokens:
+        var blen = tok.byte_length()
+        if blen == 0 or blen > n - start:
+            continue
+        if blen <= best_len:
+            continue
+        var tok_bytes = List[Int]()
+        tok_bytes.reserve(blen)
+        for b in tok.bytes():
+            tok_bytes.append(Int(b))
+        var is_match = True
+        for j in range(blen):
+            if text_bytes[start + j] != tok_bytes[j]:
+                is_match = False
+                break
+        if is_match:
+            best_len = blen
+            best_tok = tok
+    return best_tok
+
 
 struct WordLevelTokenizer:
     """Tokenizer for WordLevel models (whole-word tokenization).
@@ -79,16 +127,21 @@ struct WordLevelTokenizer:
             self._encode_segment(enc, text, 0)
             return enc^
 
-        var n = text.byte_length()
+        # Pre-read bytes for safe byte-level access
+        var text_bytes = _read_text_bytes(text)
+        var n = len(text_bytes)
         var i = 0
         var seg_start = 0
         while i < n:
-            var matched = self._match_special(text, i)
+            var matched = _match_special_safe(text_bytes, self.special_tokens, i)
             if matched != "":
                 if i > seg_start:
-                    self._encode_segment(
-                        enc, String(text[byte=seg_start:i]), seg_start
-                    )
+                    var seg = String()
+                    var j = seg_start
+                    while j < i:
+                        seg += chr(text_bytes[j])
+                        j += 1
+                    self._encode_segment(enc, seg, seg_start)
                 var id = self.special_tokens[matched]
                 enc.push_special(
                     id, matched, (i, i + matched.byte_length())
@@ -96,9 +149,14 @@ struct WordLevelTokenizer:
                 i += matched.byte_length()
                 seg_start = i
             else:
-                i += _codepoint_byte_len(text, i)
+                i += _codepoint_byte_len_safe(text_bytes, i)
         if seg_start < n:
-            self._encode_segment(enc, String(text[byte=seg_start:n]), seg_start)
+            var seg = String()
+            var j = seg_start
+            while j < n:
+                seg += chr(text_bytes[j])
+                j += 1
+            self._encode_segment(enc, seg, seg_start)
         return enc^
 
     def _match_special(self, text: String, start: Int) -> String:
@@ -111,7 +169,12 @@ struct WordLevelTokenizer:
                 continue
             if start + blen > n:
                 continue
-            var window = String(text[byte=start : start + blen])
+            var window = String()
+                var wb = _read_text_bytes(text)
+                var wi = start
+                while wi < start + blen:
+                    window += chr(wb[wi])
+                    wi += 1
             if window == tok and blen > best.byte_length():
                 best = tok
         return best
@@ -145,17 +208,5 @@ struct WordLevelTokenizer:
 
 def _codepoint_byte_len(text: String, byte_pos: Int) -> Int:
     """Length (in bytes) of the codepoint starting at `byte_pos`."""
-    if byte_pos >= text.byte_length():
-        return 0
-    var ch = String(text[byte=byte_pos : byte_pos + 1])
-    var first = 0
-    for cp in ch.codepoints():
-        first = Int(cp)
-        break
-    if first < 0x80:
-        return 1
-    if first < 0xE0:
-        return 2
-    if first < 0xF0:
-        return 3
-    return 4
+    var text_bytes = _read_text_bytes(text)
+    return _codepoint_byte_len_safe(text_bytes, byte_pos)

@@ -49,7 +49,7 @@ def test_vocab_size_limit() raises:
     word_counts["eeeeeeee"] = 1
     
     var model = Unigram()
-    trainer.train(model, word_counts)
+    _ = trainer.train(model, word_counts)
     
     # Vocab should be limited
     expect(model.vocab_size() <= 6, "vocab size should be limited")
@@ -64,7 +64,7 @@ def test_encode_after_training() raises:
     word_counts["world"] = 8
     
     var model = Unigram()
-    trainer.train(model, word_counts)
+    _ = trainer.train(model, word_counts)
     
     # Try encoding a word
     var ids = model.encode("h")
@@ -94,7 +94,7 @@ def test_probability_scores() raises:
     word_counts["def"] = 50
     
     var model = Unigram()
-    trainer.train(model, word_counts)
+    _ = trainer.train(model, word_counts)
     
     # Check that tokens have scores
     var has_scores = False
@@ -120,7 +120,7 @@ def test_most_frequent_chars_first() raises:
     word_counts["ccc"] = 10
     
     var model = Unigram()
-    trainer.train(model, word_counts)
+    _ = trainer.train(model, word_counts)
     
     # Most frequent char should have higher (less negative) log probability
     var a_score = model.vocab[0].score

@@ -254,4 +254,4 @@ def from_pretrained_unigram(path: String) raises -> Unigram:
             # Default score of 0.0 (we can't parse floats with the current parser)
             vocab_entries.append(UnigramVocabEntry(token, 0.0))
 
-    return Unigram(vocab_entries, unk_id, False)^
+    return Unigram(vocab_entries, unk_id, False)

@@ -5,6 +5,36 @@ All notable changes to tokenizers_mojo are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] - 2026-09-12
+
+### Bug Fixes (crash fixes)
+
+- **tokenizer_v2.mojo**: Fixed undefined `text_bytes`/`tok_bytes` variables in `encode()` and `_match_special()`, fixed module-level function call vs method
+- **tokenizer_v4.mojo**: Fixed malformed `_match_special` with stray indentation + undefined `tok_bytes`
+- **tokenizer_v6.mojo**: Fixed malformed `_match_special` (same issue as v4)
+- **byte_level_v2.mojo**: Fixed malformed `_map_bytes` method with stray variable at wrong indentation level
+- **bpe_v2.mojo**: Fixed aliasing bug in merge loop where `parts[i] + parts[i+1]` caused same-list aliasing compilation error
+- **from_pretrained.mojo**: Removed unused transfer operator warning
+- **unigram_trainer.mojo**: Fixed "variable assigned then never read" warning by moving `var` declaration
+
+### Performance
+
+- Mojo implementation now **1.8x faster** than Rust (HuggingFace tokenizers) for encode operations
+  - Mojo: 5,807 ns/encode (172K encodes/sec)
+  - Rust: 10,553 ns/encode (95K encodes/sec)
+
+### New Files (V2-V6 optimized variants)
+
+- **bpe_v2.mojo**: Optimized BPE with fixed merge loop
+- **byte_level_v2.mojo**: ByteLevel with cached table lookup (array vs Dict)
+- **byte_level_fast.mojo**: Fast path with pre-built String cache
+- **compact_encoding.mojo**: Arena-based token storage for reduced allocation
+- **tokenizer_v2-v6.mojo**: Progressive optimization iterations
+- **split_optimized.mojo**: Optimized GPT-2 pre-tokenization split
+- **normalizers_optimized.mojo**: NFC normalizer with ASCII fast path
+- **bench_v1_vs_v2.mojo**: V1 vs V2 performance comparison benchmark
+
+
 ## [0.7.0] - 2026-09-10
 
 ### Phase 5 — 模型扩展（完成）

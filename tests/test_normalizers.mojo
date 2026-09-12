@@ -52,7 +52,7 @@ def test_lowercase_strip_compose() raises:
 
 
 def test_nfc_real() raises:
-    var n = NFCNormalizer()
+    _ = NFCNormalizer()
     # "café" is already NFC; real NFC keeps it (and composes e+acute)
 
 

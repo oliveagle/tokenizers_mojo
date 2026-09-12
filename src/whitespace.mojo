@@ -67,6 +67,14 @@ def is_whitespace(cp: Int) -> Bool:
 # Whitespace
 # ---------------------------------------------------------------------------
 
+def _read_text_bytes(text: String) -> List[Int]:
+    """Read all bytes from text into a List for safe byte-level access."""
+    var result = List[Int]()
+    result.reserve(text.byte_length())
+    for b in text.bytes():
+        result.append(Int(b))
+    return result^
+
 
 struct Whitespace(PreTokenizer):
     """Split on word runs (`\\w+`) and punctuation runs (`[^\\w\\s]+`).
@@ -151,27 +159,38 @@ struct Metaspace(PreTokenizer):
             return tokens^
 
         var i = 0
-        var has_leading_space = text[byte=0] == " "
+        var text_bytes = _read_text_bytes(text)
+        var has_leading_space = text_bytes[0] == 0x20
 
         # Step 1: handle the first word (possibly with a prepended meta).
         # When the text starts with a space, there is no first word -- the
         # leading space run is handled in the main loop below.
         if not has_leading_space:
             var m = i
-            while m < n and not (text[byte=m] == " "):
+            while m < n and not (text_bytes[m] == 0x20):
                 m += 1
             if self.prepend_always:
                 # virtual prepended meta merges into the first word
-                tokens.append(self.replacement + String(text[byte=i:m]))
+                var seg = String()
+                var j = i
+                while j < m:
+                    seg += chr(text_bytes[j])
+                    j += 1
+                tokens.append(self.replacement + seg)
             else:
-                tokens.append(String(text[byte=i:m]))
+                var seg = String()
+                var j = i
+                while j < m:
+                    seg += chr(text_bytes[j])
+                    j += 1
+                tokens.append(seg)
             i = m
 
         # Step 2: process space runs + following words.
         while i < n:
-            if text[byte=i] == " ":
+            if text_bytes[i] == 0x20:
                 var j = i
-                while j < n and text[byte=j] == " ":
+                while j < n and text_bytes[j] == 0x20:
                     j += 1
                 var k = j - i
                 if j < n:
@@ -182,9 +201,14 @@ struct Metaspace(PreTokenizer):
                         tokens.append(self.replacement)
                         cnt -= 1
                     var m2 = j
-                    while m2 < n and not (text[byte=m2] == " "):
+                    while m2 < n and not (text_bytes[m2] == 0x20):
                         m2 += 1
-                    tokens.append(self.replacement + text[byte=j:m2])
+                    var seg = String()
+                    var sj = j
+                    while sj < m2:
+                        seg += chr(text_bytes[sj])
+                        sj += 1
+                    tokens.append(self.replacement + seg)
                     i = m2
                 else:
                     # trailing space run: every space becomes a meta char
@@ -198,9 +222,14 @@ struct Metaspace(PreTokenizer):
                 # starts with a non-space word handled above, or with
                 # tabs/newlines mixed in)
                 var m3 = i
-                while m3 < n and not (text[byte=m3] == " "):
+                while m3 < n and not (text_bytes[m3] == 0x20):
                     m3 += 1
-                tokens.append(String(text[byte=i:m3]))
+                var seg = String()
+                var sj = i
+                while sj < m3:
+                    seg += chr(text_bytes[sj])
+                    sj += 1
+                tokens.append(seg)
                 i = m3
 
         return tokens^

@@ -24,7 +24,7 @@ def test_basic_training() raises:
     word_counts["blue"] = 16
     
     var model = WordLevel()
-    trainer.train(model, word_counts)
+    _ = trainer.train(model, word_counts)
     
     # Check that vocabulary was populated
     expect(model.vocab_size() > 0, "vocab should not be empty")
@@ -51,7 +51,7 @@ def test_vocab_size_limit() raises:
     word_counts["f"] = 0  # Should be excluded
     
     var model = WordLevel()
-    trainer.train(model, word_counts)
+    _ = trainer.train(model, word_counts)
     
     expect(model.vocab_size() <= 5, "vocab size should be limited to 5")
 
@@ -68,7 +68,7 @@ def test_min_frequency() raises:
     word_counts["rare"] = 10  # Below min_frequency
     
     var model = WordLevel()
-    trainer.train(model, word_counts)
+    _ = trainer.train(model, word_counts)
     
     expect(model.token_id("frequent") >= 0, "frequent should be in vocab")
     expect(model.token_id("rare") == -1, "rare should not be in vocab")
@@ -84,7 +84,7 @@ def test_sorted_by_frequency() raises:
     word_counts["medium"] = 50
     
     var model = WordLevel()
-    trainer.train(model, word_counts)
+    _ = trainer.train(model, word_counts)
     
     # Check ordering by frequency
     expect(model.token_id("high") < model.token_id("medium"), "high should come before medium")
@@ -101,7 +101,7 @@ def test_deterministic_order() raises:
     word_counts["cherry"] = 10
     
     var model = WordLevel()
-    trainer.train(model, word_counts)
+    _ = trainer.train(model, word_counts)
     
     # With same frequency, should be sorted alphabetically
     expect(model.token_id("apple") < model.token_id("banana"), "apple should come before banana")
@@ -117,7 +117,7 @@ def test_encode_after_training() raises:
     word_counts["world"] = 8
     
     var model = WordLevel()
-    trainer.train(model, word_counts)
+    _ = trainer.train(model, word_counts)
     
     var ids = model.encode("hello")
     expect(len(ids) == 1, "encoding should produce 1 id")

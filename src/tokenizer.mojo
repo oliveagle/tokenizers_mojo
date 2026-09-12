@@ -93,12 +93,8 @@ struct Tokenizer:
         return max_id + 1
 
     def encode(self, text: String) raises -> Encoding:
-        """Encode `text` into an Encoding, splicing in any special tokens.
-        
-        Performance: pre-allocate arrays based on text length estimate.
-        """
+        """Encode `text` into an Encoding, splicing in any special tokens."""
         var enc = Encoding()
-        # Pre-allocate: ~1 token per 4 chars (conservative estimate)
         var est = text.byte_length() // 3 + 4
         enc.ids.reserve(est)
         enc.tokens.reserve(est)
@@ -110,16 +106,22 @@ struct Tokenizer:
         if not self.add_special_tokens or len(self.special_tokens) == 0:
             self._encode_segment(enc, text, 0)
             return enc^
-        var n = text.byte_length()
+        # Pre-read bytes for safe byte-level access (avoids codepoint boundary crash)
+        var text_bytes = _read_text_bytes(text)
+        var n = len(text_bytes)
         var i = 0
         var seg_start = 0
         while i < n:
             var matched = self._match_special(text, i)
             if matched != "":
                 if i > seg_start:
-                    self._encode_segment(
-                        enc, String(text[byte=seg_start:i]), seg_start
-                    )
+                    # Build substring from byte list
+                    var seg = String()
+                    var j = seg_start
+                    while j < i:
+                        seg += chr(text_bytes[j])
+                        j += 1
+                    self._encode_segment(enc, seg, seg_start)
                 var id = self.special_tokens[matched]
                 enc.push_special(
                     id, matched, Tuple[Int, Int](i, i + matched.byte_length())
@@ -127,9 +129,14 @@ struct Tokenizer:
                 i += matched.byte_length()
                 seg_start = i
             else:
-                i += _codepoint_byte_len(text, i)
+                i += _codepoint_byte_len_from_bytes(text_bytes, i)
         if seg_start < n:
-            self._encode_segment(enc, String(text[byte=seg_start:n]), seg_start)
+            var seg = String()
+            var j = seg_start
+            while j < n:
+                seg += chr(text_bytes[j])
+                j += 1
+            self._encode_segment(enc, seg, seg_start)
         return enc^
 
     def encode_batch(self, texts: List[String]) raises -> List[Encoding]:
@@ -157,22 +164,32 @@ struct Tokenizer:
         """Return the longest special token matched at byte position `start`,
         or "" if nothing matches.
         
-        Performance optimization: compare bytes directly instead of creating
-        new String objects for each comparison.
+        Uses raw byte access via .bytes() to avoid crashes on multi-byte
+        UTF-8 characters (Mojo 1.0.0 text[byte=pos] asserts codepoint boundary).
         """
         var best_len = 0
         var best_tok = String()
         var n = text.byte_length()
+        # Pre-read text bytes for safe byte-level access
+        var text_bytes = List[Int]()
+        text_bytes.reserve(n)
+        for b in text.bytes():
+            text_bytes.append(Int(b))
         for tok in self.special_tokens:
             var blen = tok.byte_length()
             if blen == 0 or blen > n - start:
                 continue
             if blen <= best_len:
                 continue
-            # Compare bytes directly
+            # Pre-read special token bytes
+            var tok_bytes = List[Int]()
+            tok_bytes.reserve(blen)
+            for b in tok.bytes():
+                tok_bytes.append(Int(b))
+            # Compare bytes from the pre-read lists
             var is_match = True
             for j in range(blen):
-                if text[byte=start + j] != tok[byte=j]:
+                if text_bytes[start + j] != tok_bytes[j]:
                     is_match = False
                     break
             if is_match:
@@ -183,11 +200,7 @@ struct Tokenizer:
     def _encode_segment(
         self, mut enc: Encoding, text: String, base_offset: Int
     ) raises:
-        """Encode a non-special segment of text and append results to enc.
-        
-        Performance optimization: use encode_word to get token strings directly,
-        then look up vocab ids. This avoids the separate token_for_id call.
-        """
+        """Encode a non-special segment of text and append results to enc."""
         var norm = self.normalizer.normalize(text)
         var pretokens = self.pre_tokenizer.pre_tokenize(norm)
         var char_idx = base_offset
@@ -221,11 +234,14 @@ struct Tokenizer:
         return self.decoder.decode(tokens)
 
 
-def _codepoint_byte_len(text: String, byte_pos: Int) -> Int:
-    """Length (in bytes) of the codepoint starting at `byte_pos`."""
-    if byte_pos >= text.byte_length():
+def _codepoint_byte_len_from_bytes(text_bytes: List[Int], byte_pos: Int) -> Int:
+    """Length (in bytes) of the codepoint starting at `byte_pos`.
+    
+    Uses pre-read byte list to avoid Mojo 1.0.0 codepoint boundary assertion.
+    """
+    if byte_pos >= len(text_bytes):
         return 0
-    var first = _byte_at(text, byte_pos)
+    var first = text_bytes[byte_pos]
     if first < 0x80:
         return 1
     if first < 0xE0:
@@ -235,10 +251,13 @@ def _codepoint_byte_len(text: String, byte_pos: Int) -> Int:
     return 4
 
 
-def _byte_at(text: String, byte_pos: Int) -> Int:
-    """Return the integer value of the byte at `byte_pos`."""
-    # Build a single-char String from the byte slice, then ord it.
-    var ch = String(text[byte = byte_pos : byte_pos + 1])
-    for cp in ch.codepoints():
-        return Int(cp)
-    return -1
+def _read_text_bytes(text: String) -> List[Int]:
+    """Read all bytes from text into a List for safe byte-level access.
+    
+    Avoids Mojo 1.0.0's text[byte=pos] codepoint boundary assertion.
+    """
+    var result = List[Int]()
+    result.reserve(text.byte_length())
+    for b in text.bytes():
+        result.append(Int(b))
+    return result^
